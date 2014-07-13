@@ -16,7 +16,7 @@ document = do
   eof
   return (Document paragraphs)
 
-documentElement = (header <|> section <|> paragraph)
+documentElement = header <|> section <|> paragraph
 
 header = do
   level <- headerMarker
