@@ -1,18 +1,77 @@
+import Debug.Trace
+import Control.Monad
+import Data.List
 import Text.ParserCombinators.Parsec
 
-document :: GenParser Char st String
+data Markup = Document [Markup]
+            | Paragraph String
+            deriving (Show, Eq)
+
+document :: GenParser Char st Markup
 document = do
-  text <- text
+  many blank
+  paragraphs <- many paragraph
   eof
-  return text
+  return (Document paragraphs)
+
+paragraph :: GenParser Char st Markup
+paragraph = do
+  text <- endBy1 lineText (eol <|> try eof)
+  blank <|> end
+  return (Paragraph (foldl (++) [] (intersperse " " text)))
+  <?> "paragraph"
+
+eol = do
+  char '\n'
+  return ()
+  <?> "end of line"
+
+end2 :: GenParser Char st String
+end2 = do
+  char '\n'
+  eof
+  return "\n\n"
+
+end = do
+  eof
+  return "\n\n"
+
+--blank = string "\n\n" <?> "blank line"
+blank = string "\n" <?> "blank line"
+
+lineText :: GenParser Char st String
+lineText = many1 (noneOf "\n")
 
 text :: GenParser Char st String
 text = many anyChar
 
-main = do
-  putStrLn $ case testParse "hello, world!" of
-    Left err  -> "Error: " ++ show err
-    Right doc -> "Document: " ++ show doc
+doc1 = Document [Paragraph "hello, world! goodbye!", Paragraph "Blah blah blah."]
 
-testParse :: String -> Either ParseError String
+shouldParse = [
+  ("", Document []),
+  ("\n", Document []),
+  ("foo", Document [Paragraph "foo"]),
+  ("foo\n", Document [Paragraph "foo"]),
+  ("hello, world!\ngoodbye!\n\nBlah blah blah.\n\n", doc1),
+  ("hello, world!\ngoodbye!\n\nBlah blah blah.\n", doc1),
+  ("hello, world!\ngoodbye!\n\nBlah blah blah.", doc1)
+  ]
+
+
+main = do
+  forM_ shouldParse $ \t -> do
+    putStrLn $ case check t of
+      (True, _)    -> "Pass."
+      (False, msg) -> "FAIL: (input: " ++ (fst t) ++ ") " ++ msg
+
+testParse :: String -> Either ParseError Markup
 testParse input = parse document "(unknown)" input
+
+check (input, expected) =
+  case testParse input of
+    Left err -> (False, (show err))
+    Right d ->
+      if d == expected then
+         (True, "")
+      else
+        (False, "Got: " ++ (show d) ++ "\nExpected " ++ (show expected))
