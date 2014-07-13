@@ -154,6 +154,10 @@ shouldParse =
   , ("hello, world!\ngoodbye!\n\nBlah blah blah.\n", helloDoc)
   , ("hello, world!\ngoodbye!\n\nBlah blah blah.", helloDoc)
   , ("* foo", d [h 1 [t "foo"]])
+  , ("\n* foo", d [h 1 [t "foo"]])
+  , ("\n\n* foo", d [h 1 [t "foo"]])
+  , ("\n\n\n* foo", d [h 1 [t "foo"]])
+  , ("\n\n\n\n* foo", d [h 1 [t "foo"]])
   , ("* foo\n\n** bar", d [h 1 [t "foo"], h 2 [t "bar"]])
   , ("* foo\n\nparagraph\n  \t \n** bar", headersDoc)
   , ("*    foo\n\nparagraph\n  \t \n** bar", headersDoc)
@@ -162,8 +166,18 @@ shouldParse =
   , ("# foo\n\nbar\n\nbaz\n\n#.", sectionDoc)
   , ("# foo\n\n* bar\n\nbaz\n\n#.\n\n", sectionDoc2)
   , ("# foo\n\n* bar\n\nbaz\n\n#.  \n\n", sectionDoc2)
+  , ("* header\n\nA paragraph\n\n# foo\n\n* bar\n\nbaz\n\n#.\n\nAnother paragraph", complexDoc1)
+  , ("* header\n\nA\nparagraph\n\n# foo\n\n* bar\n\nbaz\n\n#.\n\nAnother paragraph", complexDoc1)
   ]
 
+complexDoc1 = d [
+  h 1 [t "header"],
+  p [t "A paragraph"],
+  s "foo" [
+    h 1 [t "bar"],
+    p [ t "baz"]],
+  p [t "Another paragraph"]
+  ]
 
 homoiconic s =
   concat (["\""] ++ (map hc s) ++ ["\""])
