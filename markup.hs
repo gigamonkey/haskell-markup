@@ -11,7 +11,7 @@ data Markup = Document [Markup]
 
 document :: GenParser Char st Markup
 document = do
-  many blank
+  many eol
   paragraphs <- many documentElement
   eof
   return (Document paragraphs)
@@ -38,15 +38,13 @@ section = do
   name       <- sectionMarker
   paragraphs <- many sectionBody
   string "#."
-  eol <|> try eof
-  blank <|> eof
+  blank
   return (Section name paragraphs)
 
 sectionMarker = do
   string "# "
   n <- name
-  eol
-  many1 blank
+  many eol
   return n
 
 sectionBody = do
@@ -56,9 +54,14 @@ sectionBody = do
 name = many1 letter
 
 paragraphText = do
-  text <- endBy1 lineText (eol <|> try eof)
-  blank <|> eof
-  return (unwords text)
+  text <- many1 (noneOf "\n" <|> singleNL)
+  blank
+  return text
+
+singleNL = do
+  notFollowedBy blank
+  char '\n'
+  return ' '
 
 eol = do
   whitespace
@@ -67,20 +70,16 @@ eol = do
   <?> "end of line"
 
 blank = do
-  whitespace
-  string "\n"
+  eol <|> try eof
+  eol <|> eof
   return ()
   <?> "blank line"
 
 whitespace = many (char ' ' <|> char '\t')
 
-lineText :: GenParser Char st String
-lineText = do
-  notFollowedBy blank
-  many1 (noneOf "\n")
-
 emptyDoc    = Document []
 fooDoc      = Document [Paragraph "foo"]
+fooBarDoc   = Document [Paragraph "foo bar"]
 helloDoc    = Document [Paragraph "hello, world! goodbye!", Paragraph "Blah blah blah."]
 headersDoc  = Document [Header 1 "foo", Paragraph "paragraph", Header 2 "bar"]
 sectionDoc  = Document [ Section "foo" [Paragraph "bar", Paragraph "baz"] ]
@@ -95,6 +94,8 @@ shouldParse =
   , ("\n  \n\n\n", emptyDoc)
   , ("\n\n  \n\n", emptyDoc)
   , ("foo", fooDoc)
+  , ("foo bar", fooBarDoc)
+  , ("foo\nbar", fooBarDoc)
   , ("foo\n", fooDoc)
   , ("foo\n\n", fooDoc)
   , ("hello, world!\ngoodbye!\n\nBlah blah blah.\n\n", helloDoc)
@@ -112,10 +113,19 @@ shouldParse =
   ]
 
 
+homoiconic s =
+  concat (["\""] ++ (map hc s) ++ ["\""])
+  where hc c = case c of
+          '\n' -> "\\n"
+          '\t' -> "\\t"
+          '"'  -> "\\\""
+          _    -> [c]
+
+
 main = forM_ shouldParse $ \t ->
   putStrLn $ case check t of
-    (True, _)    -> "Pass."
-    (False, msg) -> "FAIL: (input: " ++ fst t ++ ") " ++ msg
+    (True, _)    -> "pass: (input: " ++ homoiconic (fst t) ++ ")"
+    (False, msg) -> "\nFAIL: (input: " ++ homoiconic (fst t) ++ ") " ++ msg ++ "\n"
 
 testParse :: String -> Either ParseError Markup
 testParse = parse document "(unknown)"
