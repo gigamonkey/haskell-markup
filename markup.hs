@@ -36,11 +36,11 @@ section = do
   string "# "
   n <- name
   eol
-  blank
+  many1 blank
   paragraphs <- many sectionBody
   string "#."
-  eol
-  blank
+  eol <|> try eof
+  blank <|> eof
   return (Section n paragraphs)
 
 sectionBody = do
@@ -73,11 +73,12 @@ lineText = do
   notFollowedBy blank
   many1 (noneOf "\n")
 
-emptyDoc   = Document []
-fooDoc     = Document [Paragraph "foo"]
-helloDoc   = Document [Paragraph "hello, world! goodbye!", Paragraph "Blah blah blah."]
-headersDoc = Document [Header 1 "foo", Paragraph "paragraph", Header 2 "bar"]
-sectionDoc = Document [ Section "foo" [Paragraph "bar", Paragraph "baz"] ]
+emptyDoc    = Document []
+fooDoc      = Document [Paragraph "foo"]
+helloDoc    = Document [Paragraph "hello, world! goodbye!", Paragraph "Blah blah blah."]
+headersDoc  = Document [Header 1 "foo", Paragraph "paragraph", Header 2 "bar"]
+sectionDoc  = Document [ Section "foo" [Paragraph "bar", Paragraph "baz"] ]
+sectionDoc2 = Document [ Section "foo" [Header 1 "bar", Paragraph "baz"] ]
 
 shouldParse =
   [ ("", emptyDoc)
@@ -98,6 +99,9 @@ shouldParse =
   , ("* foo\n\nparagraph\n  \t \n** bar", headersDoc)
   , ("*    foo\n\nparagraph\n  \t \n** bar", headersDoc)
   , ("# foo\n\nbar\n\nbaz\n\n#.\n\n", sectionDoc)
+  , ("# foo\n\nbar\n\nbaz\n\n#.\n", sectionDoc)
+  , ("# foo\n\nbar\n\nbaz\n\n#.", sectionDoc)
+  , ("# foo\n\n* bar\n\nbaz\n\n#.\n\n", sectionDoc2)
   ]
 
 
