@@ -6,12 +6,13 @@ import Text.ParserCombinators.Parsec
 data Markup = Document [Markup]
             | Header Int String
             | Paragraph String
+            | Section String [Markup]
             deriving (Show, Eq)
 
 document :: GenParser Char st Markup
 document = do
   many blank
-  paragraphs <- many (header <|> paragraph)
+  paragraphs <- many (header <|> section <|> paragraph)
   eof
   return (Document paragraphs)
 
@@ -23,13 +24,30 @@ header = do
 
 headerMarker = do
   stars <- many1 (char '*')
-  many (char ' ')
+  many1 (char ' ')
   return (length stars)
 
 paragraph = do
   text <- paragraphText
   return (Paragraph text)
   <?> "paragraph"
+
+section = do
+  string "# "
+  n <- name
+  eol
+  blank
+  paragraphs <- many sectionBody
+  string "#."
+  eol
+  blank
+  return (Section n paragraphs)
+
+sectionBody = do
+  notFollowedBy (string "#.")
+  (header <|> section <|> paragraph)
+
+name = many1 letter
 
 paragraphText = do
   text <- endBy1 lineText (eol <|> try eof)
@@ -55,25 +73,31 @@ lineText = do
   notFollowedBy blank
   many1 (noneOf "\n")
 
-doc1 = Document [Paragraph "hello, world! goodbye!", Paragraph "Blah blah blah."]
+emptyDoc   = Document []
+fooDoc     = Document [Paragraph "foo"]
+helloDoc   = Document [Paragraph "hello, world! goodbye!", Paragraph "Blah blah blah."]
+headersDoc = Document [Header 1 "foo", Paragraph "paragraph", Header 2 "bar"]
+sectionDoc = Document [ Section "foo" [Paragraph "bar", Paragraph "baz"] ]
 
-shouldParse = [
-  ("", Document [])
-  , ("\n", Document [])
-  , ("\n\n", Document [])
-  , ("\n\n\n", Document [])
-  , ("\n\n\n\n", Document [])
-  , ("\n  \n\n\n", Document [])
-  , ("\n\n  \n\n", Document [])
-  , ("foo", Document [Paragraph "foo"])
-  , ("foo\n", Document [Paragraph "foo"])
-  , ("hello, world!\ngoodbye!\n\nBlah blah blah.\n\n", doc1)
-  , ("hello, world!\ngoodbye!\n\nBlah blah blah.\n", doc1)
-  , ("hello, world!\ngoodbye!\n\nBlah blah blah.", doc1)
+shouldParse =
+  [ ("", emptyDoc)
+  , ("\n", emptyDoc)
+  , ("\n\n", emptyDoc)
+  , ("\n\n\n", emptyDoc)
+  , ("\n\n\n\n", emptyDoc)
+  , ("\n  \n\n\n", emptyDoc)
+  , ("\n\n  \n\n", emptyDoc)
+  , ("foo", fooDoc)
+  , ("foo\n", fooDoc)
+  , ("foo\n\n", fooDoc)
+  , ("hello, world!\ngoodbye!\n\nBlah blah blah.\n\n", helloDoc)
+  , ("hello, world!\ngoodbye!\n\nBlah blah blah.\n", helloDoc)
+  , ("hello, world!\ngoodbye!\n\nBlah blah blah.", helloDoc)
   , ("* foo", Document [Header 1 "foo"])
   , ("* foo\n\n** bar", Document [Header 1 "foo", Header 2 "bar"])
-  , ("* foo\n\nparagraph\n  \t \n** bar", Document [Header 1 "foo", Paragraph "paragraph", Header 2 "bar"])
-  , ("*    foo\n\nparagraph\n  \t \n** bar", Document [Header 1 "foo", Paragraph "paragraph", Header 2 "bar"])
+  , ("* foo\n\nparagraph\n  \t \n** bar", headersDoc)
+  , ("*    foo\n\nparagraph\n  \t \n** bar", headersDoc)
+  , ("# foo\n\nbar\n\nbaz\n\n#.\n\n", sectionDoc)
   ]
 
 
