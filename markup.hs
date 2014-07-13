@@ -3,6 +3,8 @@ import Control.Monad
 import Data.List
 import Text.ParserCombinators.Parsec
 
+-- Document representation ---------------------------------------------
+
 data Markup = Document [Markup]
             | Header Int [Markup]
             | Paragraph [Markup]
@@ -10,6 +12,9 @@ data Markup = Document [Markup]
             | Tagged String [Markup]
             | Text String
             deriving (Show, Eq)
+
+
+-- Parser --------------------------------------------------------------
 
 document :: GenParser Char st Markup
 document = do
@@ -111,6 +116,9 @@ blank = do
 
 whitespace = many (char ' ' <|> char '\t')
 
+
+-- Tests ---------------------------------------------------------------
+
 d = Document
 p = Paragraph
 t = Text
@@ -126,6 +134,14 @@ helloDoc    = d [ p [ t "hello, world! goodbye!"], p [t "Blah blah blah."]]
 headersDoc  = d [ h 1 [ t "foo"], p [ t "paragraph"], h 2 [t "bar"]]
 sectionDoc  = d [ s "foo" [ p [ t "bar"], p [t "baz"]]]
 sectionDoc2 = d [ s "foo" [ h 1 [t "bar"], p [ t "baz"]]]
+complexDoc1 = d [
+  h 1 [t "header"],
+  p [t "A paragraph"],
+  s "foo" [
+    h 1 [t "bar"],
+    p [ t "baz"]],
+  p [t "Another paragraph"]
+  ]
 
 shouldParse =
   [ ("", emptyDoc)
@@ -170,14 +186,6 @@ shouldParse =
   , ("* header\n\nA\nparagraph\n\n# foo\n\n* bar\n\nbaz\n\n#.\n\nAnother paragraph", complexDoc1)
   ]
 
-complexDoc1 = d [
-  h 1 [t "header"],
-  p [t "A paragraph"],
-  s "foo" [
-    h 1 [t "bar"],
-    p [ t "baz"]],
-  p [t "Another paragraph"]
-  ]
 
 homoiconic s =
   concat (["\""] ++ (map hc s) ++ ["\""])
