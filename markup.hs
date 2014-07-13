@@ -37,19 +37,24 @@ paragraph = do
   <?> "paragraph"
 
 paragraphText = do
-  text <- many1 plainText
+  text <- plainText
   blank
   return text
 
-plainText = plainChar <|> singleNL <|> escapedChar
+plainText = many1 plainTextChar
+
+plainTextChar = do
+  notFollowedBy taggedText
+  plainChar <|> singleNL <|> escapedChar
 
 plainChar = noneOf "\\\n"
 
 escapedChar = do
-  try (char '\\')
+  char '\\'
   oneOf "\\{*#"
 
 taggedText = do
+  notFollowedBy escapedChar
   char '\\'
   name <- name
   char '{'
@@ -127,7 +132,7 @@ shouldParse =
   , ("foo\\\\\n\n", d [p [t "foo\\"]])
   , ("foo\\*\n\n", d [p [t "foo*"]])
   , ("foo\\#\n\n", d [p [t "foo#"]])
---  , ("foo \\i{bar} baz", d [p [t "foo ", i [t "bar"], t " baz"]])
+  --, ("foo \\i{bar} baz", d [p [t "foo ", i [t "bar"], t " baz"]])
   , ("hello, world!\ngoodbye!\n\nBlah blah blah.\n\n", helloDoc)
   , ("hello, world!\ngoodbye!\n\nBlah blah blah.\n", helloDoc)
   , ("hello, world!\ngoodbye!\n\nBlah blah blah.", helloDoc)
