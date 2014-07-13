@@ -17,7 +17,7 @@ document = do
 paragraph :: GenParser Char st Markup
 paragraph = do
   text <- endBy1 lineText (eol <|> try eof)
-  blank <|> end
+  blank <|> eof
   return (Paragraph (foldl (++) [] (intersperse " " text)))
   <?> "paragraph"
 
@@ -26,24 +26,13 @@ eol = do
   return ()
   <?> "end of line"
 
-end2 :: GenParser Char st String
-end2 = do
-  char '\n'
-  eof
-  return "\n\n"
-
-end = do
-  eof
-  return "\n\n"
-
---blank = string "\n\n" <?> "blank line"
-blank = string "\n" <?> "blank line"
+blank = do
+  string "\n"
+  return ()
+  <?> "blank line"
 
 lineText :: GenParser Char st String
 lineText = many1 (noneOf "\n")
-
-text :: GenParser Char st String
-text = many anyChar
 
 doc1 = Document [Paragraph "hello, world! goodbye!", Paragraph "Blah blah blah."]
 
