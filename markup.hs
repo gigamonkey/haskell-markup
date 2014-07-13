@@ -23,7 +23,7 @@ documentElement = header <|> section <|> paragraph
 header = do
   level <- headerMarker
   text  <- paragraphText
-  return (Header level [Text text])
+  return (Header level text)
   <?> "header"
 
 headerMarker = do
@@ -33,15 +33,17 @@ headerMarker = do
 
 paragraph = do
   text <- paragraphText
-  return (Paragraph [Text text])
+  return (Paragraph text)
   <?> "paragraph"
 
 paragraphText = do
-  text <- plainText
+  text <- many1 (plainText <|> taggedText)
   blank
   return text
 
-plainText = many1 plainTextChar
+plainText = do
+  text <- many1 plainTextChar
+  return (Text text)
 
 plainTextChar = do
   notFollowedBy taggedText
@@ -132,7 +134,7 @@ shouldParse =
   , ("foo\\\\\n\n", d [p [t "foo\\"]])
   , ("foo\\*\n\n", d [p [t "foo*"]])
   , ("foo\\#\n\n", d [p [t "foo#"]])
-  --, ("foo \\i{bar} baz", d [p [t "foo ", i [t "bar"], t " baz"]])
+  , ("foo \\i{bar} baz", d [p [t "foo ", i [t "bar"], t " baz"]])
   , ("hello, world!\ngoodbye!\n\nBlah blah blah.\n\n", helloDoc)
   , ("hello, world!\ngoodbye!\n\nBlah blah blah.\n", helloDoc)
   , ("hello, world!\ngoodbye!\n\nBlah blah blah.", helloDoc)
