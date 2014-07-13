@@ -12,9 +12,11 @@ data Markup = Document [Markup]
 document :: GenParser Char st Markup
 document = do
   many blank
-  paragraphs <- many (header <|> section <|> paragraph)
+  paragraphs <- many documentElement
   eof
   return (Document paragraphs)
+
+documentElement = (header <|> section <|> paragraph)
 
 header = do
   level <- headerMarker
@@ -33,19 +35,23 @@ paragraph = do
   <?> "paragraph"
 
 section = do
-  string "# "
-  n <- name
-  eol
-  many1 blank
+  name       <- sectionMarker
   paragraphs <- many sectionBody
   string "#."
   eol <|> try eof
   blank <|> eof
-  return (Section n paragraphs)
+  return (Section name paragraphs)
+
+sectionMarker = do
+  string "# "
+  n <- name
+  eol
+  many1 blank
+  return n
 
 sectionBody = do
   notFollowedBy (string "#.")
-  (header <|> section <|> paragraph)
+  documentElement
 
 name = many1 letter
 
@@ -102,6 +108,7 @@ shouldParse =
   , ("# foo\n\nbar\n\nbaz\n\n#.\n", sectionDoc)
   , ("# foo\n\nbar\n\nbaz\n\n#.", sectionDoc)
   , ("# foo\n\n* bar\n\nbaz\n\n#.\n\n", sectionDoc2)
+  , ("# foo\n\n* bar\n\nbaz\n\n#.  \n\n", sectionDoc2)
   ]
 
 
