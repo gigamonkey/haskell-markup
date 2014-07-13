@@ -11,6 +11,7 @@ data Markup = Document [Markup]
             | Section String [Markup]
             | Tagged String [Markup]
             | Text String
+            | Verbatim String
             deriving (Show, Eq)
 
 
@@ -18,12 +19,12 @@ data Markup = Document [Markup]
 
 document :: GenParser Char st Markup
 document = do
-  many eol
+  many (try eol)
   paragraphs <- many documentElement
   eof
   return (Document paragraphs)
 
-documentElement = header <|> section <|> paragraph
+documentElement = header <|> section <|> verbatim <|> paragraph
 
 header = do
   level <- headerMarker
@@ -40,6 +41,29 @@ paragraph = do
   text <- paragraphText
   return (Paragraph text)
   <?> "paragraph"
+
+verbatim = do
+  lines <- many1 (verbatimLine <|> verbatimBlankLine)
+  return (Verbatim (cleanVerbatim lines))
+
+-- Terrible in every way
+cleanVerbatim lines = trimTrailing (concat lines)
+  where trimTrailing s = (reverse $ dropWhile (\c -> c == '\n') $ reverse s) ++ "\n"
+
+verbatimBlankLine = do
+  whitespace
+  char '\n'
+  return "\n"
+
+verbatimLine = do
+  string "   "
+  text <- many1 verbatimChar
+  eol <|> try eof
+  return (text ++ "\n")
+
+verbatimChar = do
+  notFollowedBy eol
+  anyChar
 
 paragraphText = do
   text <- many1 (plainText <|> taggedText)
@@ -126,6 +150,7 @@ h = Header
 s = Section
 i = Tagged "i"
 b = Tagged "b"
+v = Verbatim
 
 emptyDoc    = d []
 fooDoc      = d [ p [ t "foo"]]
@@ -184,8 +209,16 @@ shouldParse =
   , ("# foo\n\n* bar\n\nbaz\n\n#.  \n\n", sectionDoc2)
   , ("* header\n\nA paragraph\n\n# foo\n\n* bar\n\nbaz\n\n#.\n\nAnother paragraph", complexDoc1)
   , ("* header\n\nA\nparagraph\n\n# foo\n\n* bar\n\nbaz\n\n#.\n\nAnother paragraph", complexDoc1)
+  , ("   verbatim", d [ v "verbatim\n"])
+  , ("   verbatim\n", d [ v "verbatim\n"])
+  , ("   verbatim\n\n", d [ v "verbatim\n"])
+  , ("   verbatim\n   verbatim2\n", d [ v "verbatim\nverbatim2\n"])
+  , ("   verbatim\n\n   verbatim2\n", d [ v "verbatim\n\nverbatim2\n"])
+  , ("   verbatim\n\n\n   verbatim2\n", d [ v "verbatim\n\n\nverbatim2\n"])
+  , ("   verbatim\n\n\n", d [ v "verbatim\n"])
+  , ("   verbatim\n\nfoo", d [ v "verbatim\n", p [ t "foo"]])
+  , ("   verbatim\n\n\nfoo", d [ v "verbatim\n", p [ t "foo"]])
   ]
-
 
 homoiconic s =
   concat (["\""] ++ (map hc s) ++ ["\""])
@@ -197,8 +230,8 @@ homoiconic s =
           _    -> [c]
 
 main = forM_ shouldParse $ \t ->
-  putStrLn $ case check t of
-    (True, _)    -> "ok: " ++ homoiconic (fst t) ++ ""
+  putStr $ case check t of
+    (True, _)    -> "."
     (False, msg) -> "\nFAIL: " ++ homoiconic (fst t) ++ ":\n" ++ msg ++ "\n"
 
 testParse :: String -> Either ParseError Markup
