@@ -49,6 +49,16 @@ plainTextChar = do
   notFollowedBy taggedText
   plainChar <|> singleNL <|> escapedChar
 
+inTaggedPlainText =  do
+  text <- many1 inTaggedPlainTextChar
+  return (Text text)
+
+
+inTaggedPlainTextChar = do
+  notFollowedBy taggedText
+  notFollowedBy (char '}')
+  plainChar <|> singleNL <|> escapedChar
+
 plainChar = noneOf "\\\n"
 
 escapedChar = do
@@ -60,9 +70,9 @@ taggedText = do
   char '\\'
   name <- name
   char '{'
-  text <- many (noneOf "\n}" <|> singleNL)
+  text <- many1 (inTaggedPlainText <|> taggedText)
   char '}'
-  return (Tagged name [Text text])
+  return (Tagged name text)
 
 section = do
   name       <- sectionMarker
@@ -108,6 +118,7 @@ t = Text
 h = Header
 s = Section
 i = Tagged "i"
+b = Tagged "b"
 
 emptyDoc    = d []
 fooDoc      = d [ p [ t "foo"]]
@@ -135,6 +146,8 @@ shouldParse =
   , ("foo\\*\n\n", d [p [t "foo*"]])
   , ("foo\\#\n\n", d [p [t "foo#"]])
   , ("foo \\i{bar} baz", d [p [t "foo ", i [t "bar"], t " baz"]])
+  , ("foo \\i{\\b{bar}} baz", d [p [t "foo ", i [ b [t "bar"]], t " baz"]])
+  , ("foo \\i{foo \\b{bar} baz} baz", d [p [t "foo ", i [ t "foo ", b [t "bar"], t " baz"], t " baz"]])
   , ("hello, world!\ngoodbye!\n\nBlah blah blah.\n\n", helloDoc)
   , ("hello, world!\ngoodbye!\n\nBlah blah blah.\n", helloDoc)
   , ("hello, world!\ngoodbye!\n\nBlah blah blah.", helloDoc)
