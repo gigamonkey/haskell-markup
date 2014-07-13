@@ -7,7 +7,6 @@ test: $(binaries)
 	./markup
 
 lint:
-	@echo type hlint
 	/Users/peter/Library/Haskell/bin/hlint $(sources)
 
 clean: tidy

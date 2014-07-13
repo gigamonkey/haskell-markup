@@ -217,7 +217,7 @@ shouldParse =
   ]
 
 homoiconic s =
-  concat (["\""] ++ (map hc s) ++ ["\""])
+  concat (["\""] ++ map hc s ++ ["\""])
   where hc c = case c of
           '\n' -> "\\n"
           '\t' -> "\\t"
