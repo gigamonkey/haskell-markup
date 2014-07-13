@@ -4,9 +4,11 @@ import Data.List
 import Text.ParserCombinators.Parsec
 
 data Markup = Document [Markup]
-            | Header Int String
-            | Paragraph String
+            | Header Int [Markup]
+            | Paragraph [Markup]
             | Section String [Markup]
+            | Tagged String [Markup]
+            | Text String
             deriving (Show, Eq)
 
 document :: GenParser Char st Markup
@@ -21,7 +23,7 @@ documentElement = header <|> section <|> paragraph
 header = do
   level <- headerMarker
   text  <- paragraphText
-  return (Header level text)
+  return (Header level [Text text])
   <?> "header"
 
 headerMarker = do
@@ -31,8 +33,29 @@ headerMarker = do
 
 paragraph = do
   text <- paragraphText
-  return (Paragraph text)
+  return (Paragraph [Text text])
   <?> "paragraph"
+
+plainText = do
+  text <- many1 (plainChar <|> singleNL <|> escapedChar)
+  return (Text text)
+
+plainChar = do
+  notFollowedBy singleNL
+  notFollowedBy escapedChar
+  noneOf "\\"
+
+escapedChar = do
+  try (char '\\')
+  oneOf "\\{*#"
+
+taggedText = do
+  char '\\'
+  name <- name
+  char '{'
+  text <- many (noneOf "\n}" <|> singleNL)
+  char '}'
+  return (Tagged name [Text text])
 
 section = do
   name       <- sectionMarker
@@ -77,13 +100,20 @@ blank = do
 
 whitespace = many (char ' ' <|> char '\t')
 
-emptyDoc    = Document []
-fooDoc      = Document [Paragraph "foo"]
-fooBarDoc   = Document [Paragraph "foo bar"]
-helloDoc    = Document [Paragraph "hello, world! goodbye!", Paragraph "Blah blah blah."]
-headersDoc  = Document [Header 1 "foo", Paragraph "paragraph", Header 2 "bar"]
-sectionDoc  = Document [ Section "foo" [Paragraph "bar", Paragraph "baz"] ]
-sectionDoc2 = Document [ Section "foo" [Header 1 "bar", Paragraph "baz"] ]
+d = Document
+p = Paragraph
+t = Text
+h = Header
+s = Section
+i = Tagged "i"
+
+emptyDoc    = d []
+fooDoc      = d [ p [ t "foo"]]
+fooBarDoc   = d [ p [ t "foo bar"]]
+helloDoc    = d [ p [ t "hello, world! goodbye!"], p [t "Blah blah blah."]]
+headersDoc  = d [ h 1 [ t "foo"], p [ t "paragraph"], h 2 [t "bar"]]
+sectionDoc  = d [ s "foo" [ p [ t "bar"], p [t "baz"]]]
+sectionDoc2 = d [ s "foo" [ h 1 [t "bar"], p [ t "baz"]]]
 
 shouldParse =
   [ ("", emptyDoc)
@@ -98,11 +128,12 @@ shouldParse =
   , ("foo\nbar", fooBarDoc)
   , ("foo\n", fooDoc)
   , ("foo\n\n", fooDoc)
+--  , ("foo \\i{bar} baz", d [p [t "foo ", i [t "bar"], t " baz"]])
   , ("hello, world!\ngoodbye!\n\nBlah blah blah.\n\n", helloDoc)
   , ("hello, world!\ngoodbye!\n\nBlah blah blah.\n", helloDoc)
   , ("hello, world!\ngoodbye!\n\nBlah blah blah.", helloDoc)
-  , ("* foo", Document [Header 1 "foo"])
-  , ("* foo\n\n** bar", Document [Header 1 "foo", Header 2 "bar"])
+  , ("* foo", d [h 1 [t "foo"]])
+  , ("* foo\n\n** bar", d [h 1 [t "foo"], h 2 [t "bar"]])
   , ("* foo\n\nparagraph\n  \t \n** bar", headersDoc)
   , ("*    foo\n\nparagraph\n  \t \n** bar", headersDoc)
   , ("# foo\n\nbar\n\nbaz\n\n#.\n\n", sectionDoc)
@@ -118,14 +149,15 @@ homoiconic s =
   where hc c = case c of
           '\n' -> "\\n"
           '\t' -> "\\t"
+          '\\' -> "\\\\"
           '"'  -> "\\\""
           _    -> [c]
 
 
 main = forM_ shouldParse $ \t ->
   putStrLn $ case check t of
-    (True, _)    -> "pass: (input: " ++ homoiconic (fst t) ++ ")"
-    (False, msg) -> "\nFAIL: (input: " ++ homoiconic (fst t) ++ ") " ++ msg ++ "\n"
+    (True, _)    -> "ok: " ++ homoiconic (fst t) ++ ""
+    (False, msg) -> "\nFAIL: " ++ homoiconic (fst t) ++ ":\n" ++ msg ++ "\n"
 
 testParse :: String -> Either ParseError Markup
 testParse = parse document "(unknown)"
@@ -137,4 +169,4 @@ check (input, expected) =
       if d == expected then
         (True, "")
       else
-        (False, "Got: " ++ show d ++ "\nExpected " ++ show expected)
+        (False, "  Got: " ++ show d ++ "\n  Exp: " ++ show expected)
