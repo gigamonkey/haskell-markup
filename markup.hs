@@ -36,14 +36,14 @@ paragraph = do
   return (Paragraph [Text text])
   <?> "paragraph"
 
-plainText = do
-  text <- many1 (plainChar <|> singleNL <|> escapedChar)
-  return (Text text)
+paragraphText = do
+  text <- many1 plainText
+  blank
+  return text
 
-plainChar = do
-  notFollowedBy singleNL
-  notFollowedBy escapedChar
-  noneOf "\\"
+plainText = plainChar <|> singleNL <|> escapedChar
+
+plainChar = noneOf "\\\n"
 
 escapedChar = do
   try (char '\\')
@@ -75,11 +75,6 @@ sectionBody = do
   documentElement
 
 name = many1 letter
-
-paragraphText = do
-  text <- many1 (noneOf "\n" <|> singleNL)
-  blank
-  return text
 
 singleNL = do
   notFollowedBy blank
@@ -128,6 +123,10 @@ shouldParse =
   , ("foo\nbar", fooBarDoc)
   , ("foo\n", fooDoc)
   , ("foo\n\n", fooDoc)
+  , ("foo\\{\n\n", d [p [t "foo{"]])
+  , ("foo\\\\\n\n", d [p [t "foo\\"]])
+  , ("foo\\*\n\n", d [p [t "foo*"]])
+  , ("foo\\#\n\n", d [p [t "foo#"]])
 --  , ("foo \\i{bar} baz", d [p [t "foo ", i [t "bar"], t " baz"]])
   , ("hello, world!\ngoodbye!\n\nBlah blah blah.\n\n", helloDoc)
   , ("hello, world!\ngoodbye!\n\nBlah blah blah.\n", helloDoc)
