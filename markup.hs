@@ -4,8 +4,8 @@ import Data.List
 import Text.ParserCombinators.Parsec
 
 data Markup = Document [Markup]
-            | Paragraph String
             | Header Int String
+            | Paragraph String
             deriving (Show, Eq)
 
 document :: GenParser Char st Markup
@@ -15,21 +15,26 @@ document = do
   eof
   return (Document paragraphs)
 
-header :: GenParser Char st Markup
 header = do
-  stars <- many1 (char '*')
-  char ' '
-  text <- endBy1 lineText (eol <|> try eof)
-  blank <|> eof
-  return (Header (length stars) (unwords text))
+  level <- headerMarker
+  text  <- paragraphText
+  return (Header level text)
   <?> "header"
 
-paragraph :: GenParser Char st Markup
+headerMarker = do
+  stars <- many1 (char '*')
+  many (char ' ')
+  return (length stars)
+
 paragraph = do
+  text <- paragraphText
+  return (Paragraph text)
+  <?> "paragraph"
+
+paragraphText = do
   text <- endBy1 lineText (eol <|> try eof)
   blank <|> eof
-  return (Paragraph (unwords text))
-  <?> "paragraph"
+  return (unwords text)
 
 eol = do
   whitespace
@@ -68,6 +73,7 @@ shouldParse = [
   , ("* foo", Document [Header 1 "foo"])
   , ("* foo\n\n** bar", Document [Header 1 "foo", Header 2 "bar"])
   , ("* foo\n\nparagraph\n  \t \n** bar", Document [Header 1 "foo", Paragraph "paragraph", Header 2 "bar"])
+  , ("*    foo\n\nparagraph\n  \t \n** bar", Document [Header 1 "foo", Paragraph "paragraph", Header 2 "bar"])
   ]
 
 
