@@ -46,14 +46,10 @@ verbatim = do
   lines <- many1 (verbatimLine <|> verbatimBlankLine)
   return (Verbatim (cleanVerbatim lines))
 
--- Terrible in every way
-cleanVerbatim lines = trimTrailing (concat lines)
-  where trimTrailing s = (reverse $ dropWhile (\c -> c == '\n') $ reverse s) ++ "\n"
+cleanVerbatim lines =
+  concat $ reverse $ dropWhile ("\n" ==) $ reverse lines
 
-verbatimBlankLine = do
-  whitespace
-  char '\n'
-  return "\n"
+verbatimBlankLine = eol >> return "\n"
 
 verbatimLine = do
   string "   "
