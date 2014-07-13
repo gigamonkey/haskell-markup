@@ -53,7 +53,6 @@ inTaggedPlainText =  do
   text <- many1 inTaggedPlainTextChar
   return (Text text)
 
-
 inTaggedPlainTextChar = do
   notFollowedBy taggedText
   notFollowedBy (char '}')
@@ -63,7 +62,7 @@ plainChar = noneOf "\\\n"
 
 escapedChar = do
   char '\\'
-  oneOf "\\{*#"
+  oneOf "\\{}*#"
 
 taggedText = do
   notFollowedBy escapedChar
@@ -145,7 +144,10 @@ shouldParse =
   , ("foo\\\\\n\n", d [p [t "foo\\"]])
   , ("foo\\*\n\n", d [p [t "foo*"]])
   , ("foo\\#\n\n", d [p [t "foo#"]])
+  , ("foo {bar} baz", d [p [t "foo {bar} baz"]])
+  , ("foo \\{bar\\} baz", d [p [t "foo {bar} baz"]])
   , ("foo \\i{bar} baz", d [p [t "foo ", i [t "bar"], t " baz"]])
+  , ("foo \\i{bar\\}} baz", d [p [t "foo ", i [t "bar}"], t " baz"]])
   , ("foo \\i{\\b{bar}} baz", d [p [t "foo ", i [ b [t "bar"]], t " baz"]])
   , ("foo \\i{foo \\b{bar} baz} baz", d [p [t "foo ", i [ t "foo ", b [t "bar"], t " baz"], t " baz"]])
   , ("hello, world!\ngoodbye!\n\nBlah blah blah.\n\n", helloDoc)
@@ -171,7 +173,6 @@ homoiconic s =
           '\\' -> "\\\\"
           '"'  -> "\\\""
           _    -> [c]
-
 
 main = forM_ shouldParse $ \t ->
   putStrLn $ case check t of
