@@ -6,6 +6,8 @@ all: $(binaries)
 check: tests
 	./tests
 
+tests: tests.hs markup.hs
+
 lint:
 	/Users/peter/Library/Haskell/bin/hlint $(sources)
 
