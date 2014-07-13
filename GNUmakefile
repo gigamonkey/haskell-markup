@@ -1,5 +1,5 @@
-source = $(wildcard *.hs)
-binaries = $(basename $(source))
+sources = $(wildcard *.hs)
+binaries = $(basename $(sources))
 
 all: $(binaries)
 
@@ -7,7 +7,8 @@ test: $(binaries)
 	./markup
 
 lint:
-	hlint $(source)
+	@echo type hlint
+	/Users/peter/Library/Haskell/bin/hlint $(sources)
 
 clean: tidy
 	rm -f $(binaries)
