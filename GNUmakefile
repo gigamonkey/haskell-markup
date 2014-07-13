@@ -3,8 +3,8 @@ binaries = $(basename $(sources))
 
 all: $(binaries)
 
-test: $(binaries)
-	./markup
+check: tests
+	./tests
 
 lint:
 	/Users/peter/Library/Haskell/bin/hlint $(sources)
