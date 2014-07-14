@@ -27,6 +27,9 @@ document = do
   eof
   return (Document paragraphs)
 
+
+-- Main elements -------------------------------------------------------
+
 element = indentation >> (header <|> section <|> verbatim <|> blockquote <|> paragraph)
 
 header = do
@@ -41,12 +44,16 @@ section = do
   string "#."
   blank
   return (Section name paragraphs)
+  <?> "section"
 
-paragraph  = liftM Paragraph paragraphText <?> "paragraph"
+verbatim   = indented 3 (liftM Verbatim verbatimText) <?> "verbatim"
 
 blockquote = indented 2 (liftM Blockquote (many1 element)) <?> "blockquote"
 
-verbatim   = indented 3 (liftM Verbatim verbatimText) <?> "verbatim"
+paragraph  = liftM Paragraph paragraphText <?> "paragraph"
+
+
+-- And the nitty gritty details ----------------------------------------
 
 headerMarker = do
   stars <- many1 (char '*')
@@ -102,14 +109,12 @@ sectionBody = notFollowedBy (string "#.") >> element
 
 name = many1 letter
 
-eol = whitespace >> newline <?> "end of line"
 
-newline = do
-  char '\n'
-  (i, soFar) <- getState
-  setState (i, 0)
-  return ()
-  <?> "newline"
+-- Whitespace and indentation handling ---------------------------------
+
+whitespace = many (oneOf " \t") <?> "whitespace"
+
+eol = whitespace >> newline <?> "end of line"
 
 blank = do
   eol <|> try eof
@@ -117,12 +122,9 @@ blank = do
   return ()
   <?> "blank line"
 
-whitespace = many (oneOf " \t") <?> "whitespace"
-
 indented n p = do
   (orig, soFar) <- getState
-  let new = orig + n
-  setState (new, soFar)
+  setState (orig + n, soFar)
   try (lookAhead (string (replicate n ' ')))
   r <- p
   (current, soFar) <- getState
@@ -134,3 +136,9 @@ indentation = do
   let i = current - soFar
   try (string (replicate i ' '))
   setState (current, current)
+
+newline = do
+  (i, _) <- getState
+  setState (i, 0)
+  void (char '\n')
+  <?> "newline"
