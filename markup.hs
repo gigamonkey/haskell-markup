@@ -3,7 +3,7 @@ module Markup where
 import Debug.Trace
 import Control.Monad
 import Data.List
-import Text.ParserCombinators.Parsec
+import Text.ParserCombinators.Parsec hiding (newline)
 
 -- Document representation ---------------------------------------------
 
@@ -20,53 +20,43 @@ data Markup = Document [Markup]
 
 -- Parser --------------------------------------------------------------
 
-document :: GenParser Char Int Markup
+document :: GenParser Char (Int, Int) Markup
 document = do
   many (try eol)
-  paragraphs <- many documentElement
+  paragraphs <- many element
   eof
   return (Document paragraphs)
 
-documentElement = header <|> section <|> verbatim <|> blockquote <|> paragraph
+element = indentation >> (header <|> section <|> verbatim <|> blockquote <|> paragraph)
 
 header = do
-  indentation
   level <- headerMarker
   text  <- paragraphText
   return (Header level text)
   <?> "header"
+
+section = do
+  name       <- sectionMarker
+  paragraphs <- many sectionBody
+  string "#."
+  blank
+  return (Section name paragraphs)
+
+paragraph  = liftM Paragraph paragraphText <?> "paragraph"
+
+blockquote = indented 2 (liftM Blockquote (many1 element)) <?> "blockquote"
+
+verbatim   = indented 3 (liftM Verbatim verbatimText) <?> "verbatim"
 
 headerMarker = do
   stars <- many1 (char '*')
   whitespace
   return (length stars)
 
-paragraph = do
-  indentation
-  text <- paragraphText
-  return (Paragraph text)
-  <?> "paragraph"
-
-blockquote = indented 2 $ liftM Blockquote (many1 (verbatim <|> blockquote <|> try header <|> try section <|> paragraph))
-
-verbatim = indented 3 verbatimText
-  where verbatimText = do
-          lines <- many1 (verbatimLine <|> verbatimBlankLine)
-          return (Verbatim $ concat $ dropTrailingBlanks lines)
-        dropTrailingBlanks lines =
-          reverse $ dropWhile ("\n" ==) $ reverse lines
-
-indented n p = do
-  orig <- getState
-  setState (orig + n)
-  try (lookAhead indentation)
-  r <- try p
-  setState orig
-  return r
-
-indentation = do
-  i <- getState
-  try (string (replicate i ' '))
+verbatimText = do
+  lines <- many1 (verbatimLine <|> verbatimBlankLine)
+  return (concat $ dropTrailingBlanks lines)
+      where dropTrailingBlanks lines = reverse $ dropWhile ("\n" ==) $ reverse lines
 
 verbatimLine = do
   indentation
@@ -74,22 +64,20 @@ verbatimLine = do
   eol <|> try eof
   return (text ++ "\n")
 
-verbatimBlankLine = eol >> return "\n"
+verbatimBlankLine = try eol >> return "\n" <?> "verbatim blank"
 
 paragraphText = do
   text <- many1 (textUntil taggedText <|> taggedText)
   blank
   return text
 
-textUntil p = liftM Text (many1 (charsUntil p))
+textUntil p = liftM Text $ many1 $ charsUntil p
 
-charsUntil p = do
-  notFollowedBy p
-  plainChar <|> singleNL <|> escapedChar
-
-taggedOrBrace = void taggedText <|> void (char '}')
+charsUntil p = notFollowedBy p >> (plainChar <|> newlineChar <|> escapedChar)
 
 plainChar = noneOf "\\\n"
+
+newlineChar = notFollowedBy blank >> newline >> indentation >> return ' '
 
 escapedChar = char '\\' >> oneOf "\\{}*#"
 
@@ -102,13 +90,7 @@ taggedText = do
   char '}'
   return (Tagged name text)
 
-section = do
-  indentation
-  name       <- sectionMarker
-  paragraphs <- many sectionBody
-  string "#."
-  blank
-  return (Section name paragraphs)
+taggedOrBrace = void taggedText <|> void (char '}')
 
 sectionMarker = do
   string "# "
@@ -116,19 +98,18 @@ sectionMarker = do
   many eol
   return n
 
-sectionBody = do
-  notFollowedBy (string "#.")
-  documentElement
+sectionBody = notFollowedBy (string "#.") >> element
 
 name = many1 letter
 
-singleNL = do
-  notFollowedBy blank
-  char '\n'
-  indentation
-  return ' '
+eol = whitespace >> newline <?> "end of line"
 
-eol = whitespace >> (void (char '\n')) <?> "end of line"
+newline = do
+  char '\n'
+  (i, soFar) <- getState
+  setState (i, 0)
+  return ()
+  <?> "newline"
 
 blank = do
   eol <|> try eof
@@ -136,4 +117,20 @@ blank = do
   return ()
   <?> "blank line"
 
-whitespace = many (char ' ' <|> char '\t')
+whitespace = many (oneOf " \t") <?> "whitespace"
+
+indented n p = do
+  (orig, soFar) <- getState
+  let new = orig + n
+  setState (new, soFar)
+  try (lookAhead (string (replicate n ' ')))
+  r <- p
+  (current, soFar) <- getState
+  setState (orig, soFar)
+  return r
+
+indentation = do
+  (current, soFar) <- getState
+  let i = current - soFar
+  try (string (replicate i ' '))
+  setState (current, current)
