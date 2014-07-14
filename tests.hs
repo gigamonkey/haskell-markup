@@ -81,6 +81,8 @@ shouldParse =
   , ("   verbatim\n\n\n", d [ v "verbatim\n"])
   , ("   verbatim\n\nfoo", d [ v "verbatim\n", p [ t "foo"]])
   , ("   verbatim\n\n\nfoo", d [ v "verbatim\n", p [ t "foo"]])
+  , ("   line one\n    line two\n    line three", d [ v "line one\n line two\n line three\n"])
+  , ("   line one\n     line two\n    line three", d [ v "line one\n  line two\n line three\n"])
   ]
 
 homoiconic s =
@@ -98,7 +100,7 @@ main = forM_ shouldParse $ \t ->
     (False, msg) -> "\nFAIL: " ++ homoiconic (fst t) ++ ":\n" ++ msg ++ "\n"
 
 testParse :: String -> Either ParseError Markup
-testParse = parse document "(unknown)"
+testParse input = runParser document 0 "input string" input
 
 check (input, expected) =
   case testParse input of

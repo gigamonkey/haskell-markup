@@ -19,7 +19,7 @@ data Markup = Document [Markup]
 
 -- Parser --------------------------------------------------------------
 
-document :: GenParser Char st Markup
+document :: GenParser Char Int Markup
 document = do
   many (try eol)
   paragraphs <- many documentElement
@@ -29,6 +29,7 @@ document = do
 documentElement = header <|> section <|> verbatim <|> paragraph
 
 header = do
+  indentation
   level <- headerMarker
   text  <- paragraphText
   return (Header level text)
@@ -36,22 +37,37 @@ header = do
 
 headerMarker = do
   stars <- many1 (char '*')
-  many1 (char ' ')
+  whitespace
   return (length stars)
 
 paragraph = do
+  indentation
   text <- paragraphText
   return (Paragraph text)
   <?> "paragraph"
 
 verbatim = do
+  indent 3
   lines <- many1 (verbatimLine <|> verbatimBlankLine)
-  return (Verbatim $ dropTrailingBlanks lines)
+  dedent 3
+  return (Verbatim $ concat $ dropTrailingBlanks lines)
     where dropTrailingBlanks lines =
-            concat $ reverse $ dropWhile ("\n" ==) $ reverse lines
+            reverse $ dropWhile ("\n" ==) $ reverse lines
+
+indent n = do
+  current <- getState
+  setState (current + n)
+
+dedent n = do
+  current <- getState
+  setState (current - n)
+
+indentation = do
+  i <- getState
+  string (replicate i ' ')
 
 verbatimLine = do
-  string "   "
+  indentation
   text <- many1 (notFollowedBy eol >> anyChar)
   eol <|> try eof
   return (text ++ "\n")
@@ -85,6 +101,7 @@ taggedText = do
   return (Tagged name text)
 
 section = do
+  indentation
   name       <- sectionMarker
   paragraphs <- many sectionBody
   string "#."
