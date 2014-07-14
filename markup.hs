@@ -46,21 +46,19 @@ paragraph = do
   return (Paragraph text)
   <?> "paragraph"
 
-verbatim = do
-  indent 3
-  lines <- many1 (verbatimLine <|> verbatimBlankLine)
-  dedent 3
-  return (Verbatim $ concat $ dropTrailingBlanks lines)
-    where dropTrailingBlanks lines =
-            reverse $ dropWhile ("\n" ==) $ reverse lines
+verbatim = indented 3 verbatimText
+  where verbatimText = do
+          lines <- many1 (verbatimLine <|> verbatimBlankLine)
+          return (Verbatim $ concat $ dropTrailingBlanks lines)
+        dropTrailingBlanks lines =
+          reverse $ dropWhile ("\n" ==) $ reverse lines
 
-indent n = do
-  current <- getState
-  setState (current + n)
-
-dedent n = do
-  current <- getState
-  setState (current - n)
+indented n p = do
+  orig <- getState
+  setState (orig + n)
+  r <- p
+  setState orig
+  return r
 
 indentation = do
   i <- getState
