@@ -88,7 +88,7 @@ shouldParse =
   , ("regular\n\n  blockquote\n\nregular", d [ p [t "regular"], bq [p [t "blockquote"]], p [t "regular"]])
   , ("regular\n\n  blockquote\n  and more\n\nregular", d [ p [t "regular"], bq [p [t "blockquote and more"]], p [t "regular"]])
   , ("regular\n\n  blockquote\n  and more\n\n     verbatim\n\nregular", d [ p [t "regular"], bq [ p [t "blockquote and more"], v "verbatim\n" ], p [t "regular"]])
-  , ("regular\n\n  blockquote\n  and more\n\n    indented blockquote\n\nregular", d [ p [t "regular"], bq [ p [t "blockquote and more"], bq [p [t "indented blockquote" ]]], p [t "regular"]])
+  , ("regular\n\n  blockquote\n  and more\n\n    nested blockquote\n\nregular", d [ p [t "regular"], bq [ p [t "blockquote and more"], bq [p [t "nested blockquote" ]]], p [t "regular"]])
   , ("regular\n\n  blockquote\n  and more\n\n  second paragraph\n\nregular", d [ p [t "regular"], bq [ p [t "blockquote and more"], p [t "second paragraph" ]], p [t "regular"]])
   , ("regular\n\n  blockquote\n  and more\n \n  second paragraph\n\nregular", d [ p [t "regular"], bq [ p [t "blockquote and more"], p [t "second paragraph" ]], p [t "regular"]])
   , ("regular\n\n  blockquote\n  and more\n  \n  second paragraph\n\nregular", d [ p [t "regular"], bq [ p [t "blockquote and more"], p [t "second paragraph" ]], p [t "regular"]])
