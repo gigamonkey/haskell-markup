@@ -88,8 +88,6 @@ shouldParse =
   , ("regular\n\n  blockquote\n\nregular", d [ p [t "regular"], bq [p [t "blockquote"]], p [t "regular"]])
   , ("regular\n\n  blockquote\n  and more\n\nregular", d [ p [t "regular"], bq [p [t "blockquote and more"]], p [t "regular"]])
   , ("regular\n\n  blockquote\n  and more\n\n     verbatim\n\nregular", d [ p [t "regular"], bq [ p [t "blockquote and more"], v "verbatim\n" ], p [t "regular"]])
-
-
   ]
 
 homoiconic s =
