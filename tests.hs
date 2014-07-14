@@ -88,6 +88,7 @@ shouldParse =
   , ("regular\n\n  blockquote\n\nregular", d [ p [t "regular"], bq [p [t "blockquote"]], p [t "regular"]])
   , ("regular\n\n  blockquote\n  and more\n\nregular", d [ p [t "regular"], bq [p [t "blockquote and more"]], p [t "regular"]])
   , ("regular\n\n  blockquote\n  and more\n\n     verbatim\n\nregular", d [ p [t "regular"], bq [ p [t "blockquote and more"], v "verbatim\n" ], p [t "regular"]])
+  , ("regular\n\n  blockquote\n  and more\n\n    indented blockquote\n\nregular", d [ p [t "regular"], bq [ p [t "blockquote and more"], bq [p [t "indented blockquote" ]]], p [t "regular"]])
   ]
 
 homoiconic s =
@@ -114,4 +115,4 @@ check (input, expected) =
       if d == expected then
         (True, "")
       else
-        (False, "  Got: " ++ show d ++ "\n  Exp: " ++ show expected)
+        (False, "  Exp: " ++ show expected ++ "\n  Got: " ++ show d)

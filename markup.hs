@@ -47,7 +47,7 @@ paragraph = do
   return (Paragraph text)
   <?> "paragraph"
 
-blockquote = indented 2 $ liftM Blockquote (many1 (verbatim <|> paragraph))
+blockquote = indented 2 $ liftM Blockquote (many1 (verbatim <|> blockquote <|> paragraph))
 
 verbatim = indented 3 verbatimText
   where verbatimText = do
@@ -59,6 +59,7 @@ verbatim = indented 3 verbatimText
 indented n p = do
   orig <- getState
   setState (orig + n)
+  try (lookAhead indentation)
   r <- try p
   setState orig
   return r
