@@ -1,6 +1,9 @@
 sources = $(wildcard *.hs)
 binaries = $(basename $(sources))
 
+GHC_OPTS := -O2
+GHC_OPTS += -XNoMonomorphismRestriction
+
 all: $(binaries)
 
 check: tests
@@ -20,4 +23,4 @@ tidy:
 	rm -f *~
 
 %: %.hs
-	ghc -O2 $<
+	ghc $(GHC_OPTS) $<

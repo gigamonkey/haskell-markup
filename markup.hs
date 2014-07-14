@@ -3,7 +3,7 @@ module Markup where
 import Debug.Trace
 import Control.Monad
 import Data.List
-import Text.ParserCombinators.Parsec hiding (newline)
+import Text.Parsec hiding (newline)
 
 -- Document representation ---------------------------------------------
 
@@ -20,7 +20,6 @@ data Markup = Document [Markup]
 
 -- Parser --------------------------------------------------------------
 
-document :: GenParser Char (Int, Int) Markup
 document = do
   many (try eol)
   paragraphs <- many element
