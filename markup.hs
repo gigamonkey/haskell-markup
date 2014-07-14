@@ -47,7 +47,7 @@ paragraph = do
   return (Paragraph text)
   <?> "paragraph"
 
-blockquote = indented 2 $ liftM Blockquote (many1 paragraph)
+blockquote = indented 2 $ liftM Blockquote (many1 (verbatim <|> paragraph))
 
 verbatim = indented 3 verbatimText
   where verbatimText = do
