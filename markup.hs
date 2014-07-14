@@ -1,8 +1,6 @@
 module Markup where
 
-import Debug.Trace
 import Control.Monad
-import Data.List
 import Text.Parsec hiding (newline)
 
 -- Document representation ---------------------------------------------
@@ -126,7 +124,7 @@ indented n p = do
   setState (orig + n, soFar)
   try (lookAhead (string (replicate n ' ')))
   r <- p
-  (current, soFar) <- getState
+  (_, soFar) <- getState
   setState (orig, soFar)
   return r
 

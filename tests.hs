@@ -1,8 +1,6 @@
 import Control.Monad
-import Data.List
 import Text.ParserCombinators.Parsec
 import Markup
-
 
 -- Tests ---------------------------------------------------------------
 

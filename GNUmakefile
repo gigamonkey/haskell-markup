@@ -2,6 +2,7 @@ sources = $(wildcard *.hs)
 binaries = $(basename $(sources))
 
 GHC_OPTS := -O2
+GHC_OPTS += -W
 GHC_OPTS += -XNoMonomorphismRestriction
 
 all: $(binaries)
