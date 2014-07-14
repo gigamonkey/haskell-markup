@@ -14,6 +14,7 @@ s = Section
 i = Tagged "i"
 b = Tagged "b"
 v = Verbatim
+bq = Blockquote
 
 emptyDoc    = d []
 fooDoc      = d [ p [ t "foo"]]
@@ -83,6 +84,9 @@ shouldParse =
   , ("   verbatim\n\n\nfoo", d [ v "verbatim\n", p [ t "foo"]])
   , ("   line one\n    line two\n    line three", d [ v "line one\n line two\n line three\n"])
   , ("   line one\n     line two\n    line three", d [ v "line one\n  line two\n line three\n"])
+  , ("regular\n\n   verbatim\n\nregular", d [ p [t "regular"], v "verbatim\n", p [t "regular"]])
+  , ("regular\n\n  blockquote\n\nregular", d [ p [t "regular"], bq [p [t "blockquote"]], p [t "regular"]])
+  , ("regular\n\n  blockquote\n  and more\n\nregular", d [ p [t "regular"], bq [p [t "blockquote and more"]], p [t "regular"]])
   ]
 
 homoiconic s =
@@ -100,7 +104,7 @@ main = forM_ shouldParse $ \t ->
     (False, msg) -> "\nFAIL: " ++ homoiconic (fst t) ++ ":\n" ++ msg ++ "\n"
 
 testParse :: String -> Either ParseError Markup
-testParse input = runParser document 0 "input string" input
+testParse = runParser document 0 "input string"
 
 check (input, expected) =
   case testParse input of

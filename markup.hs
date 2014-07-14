@@ -14,6 +14,7 @@ data Markup = Document [Markup]
             | Tagged String [Markup]
             | Text String
             | Verbatim String
+            | Blockquote [Markup]
             deriving (Show, Eq)
 
 
@@ -26,7 +27,7 @@ document = do
   eof
   return (Document paragraphs)
 
-documentElement = header <|> section <|> verbatim <|> paragraph
+documentElement = header <|> section <|> verbatim <|> blockquote <|> paragraph
 
 header = do
   indentation
@@ -46,6 +47,8 @@ paragraph = do
   return (Paragraph text)
   <?> "paragraph"
 
+blockquote = indented 2 $ liftM Blockquote (many1 paragraph)
+
 verbatim = indented 3 verbatimText
   where verbatimText = do
           lines <- many1 (verbatimLine <|> verbatimBlankLine)
@@ -56,13 +59,13 @@ verbatim = indented 3 verbatimText
 indented n p = do
   orig <- getState
   setState (orig + n)
-  r <- p
+  r <- try p
   setState orig
   return r
 
 indentation = do
   i <- getState
-  string (replicate i ' ')
+  try (string (replicate i ' '))
 
 verbatimLine = do
   indentation
@@ -73,17 +76,17 @@ verbatimLine = do
 verbatimBlankLine = eol >> return "\n"
 
 paragraphText = do
-  text <- many1 ((textUntil taggedText) <|> taggedText)
+  text <- many1 (textUntil taggedText <|> taggedText)
   blank
   return text
 
-textUntil p = many1 (charsUntil p) >>= return . Text
+textUntil p = liftM Text (many1 (charsUntil p))
 
 charsUntil p = do
   notFollowedBy p
   plainChar <|> singleNL <|> escapedChar
 
-taggedOrBrace = (taggedText >> return ()) <|> (char '}' >> return ())
+taggedOrBrace = void taggedText <|> void (char '}')
 
 plainChar = noneOf "\\\n"
 
@@ -94,7 +97,7 @@ taggedText = do
   char '\\'
   name <- name
   char '{'
-  text <- many1 ((textUntil taggedOrBrace) <|> taggedText)
+  text <- many1 (textUntil taggedOrBrace <|> taggedText)
   char '}'
   return (Tagged name text)
 
@@ -121,6 +124,7 @@ name = many1 letter
 singleNL = do
   notFollowedBy blank
   char '\n'
+  indentation
   return ' '
 
 eol = do
