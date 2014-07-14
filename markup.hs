@@ -46,57 +46,41 @@ paragraph = do
 
 verbatim = do
   lines <- many1 (verbatimLine <|> verbatimBlankLine)
-  return (Verbatim (cleanVerbatim lines))
-
-cleanVerbatim lines =
-  concat $ reverse $ dropWhile ("\n" ==) $ reverse lines
-
-verbatimBlankLine = eol >> return "\n"
+  return (Verbatim $ dropTrailingBlanks lines)
+    where dropTrailingBlanks lines =
+            concat $ reverse $ dropWhile ("\n" ==) $ reverse lines
 
 verbatimLine = do
   string "   "
-  text <- many1 verbatimChar
+  text <- many1 (notFollowedBy eol >> anyChar)
   eol <|> try eof
   return (text ++ "\n")
 
-verbatimChar = do
-  notFollowedBy eol
-  anyChar
+verbatimBlankLine = eol >> return "\n"
 
 paragraphText = do
-  text <- many1 (plainText <|> taggedText)
+  text <- many1 ((textUntil taggedText) <|> taggedText)
   blank
   return text
 
-plainText = do
-  text <- many1 plainTextChar
-  return (Text text)
+textUntil p = many1 (charsUntil p) >>= return . Text
 
-plainTextChar = do
-  notFollowedBy taggedText
+charsUntil p = do
+  notFollowedBy p
   plainChar <|> singleNL <|> escapedChar
 
-inTaggedPlainText =  do
-  text <- many1 inTaggedPlainTextChar
-  return (Text text)
-
-inTaggedPlainTextChar = do
-  notFollowedBy taggedText
-  notFollowedBy (char '}')
-  plainChar <|> singleNL <|> escapedChar
+taggedOrBrace = (taggedText >> return ()) <|> (char '}' >> return ())
 
 plainChar = noneOf "\\\n"
 
-escapedChar = do
-  char '\\'
-  oneOf "\\{}*#"
+escapedChar = char '\\' >> oneOf "\\{}*#"
 
 taggedText = do
   notFollowedBy escapedChar
   char '\\'
   name <- name
   char '{'
-  text <- many1 (inTaggedPlainText <|> taggedText)
+  text <- many1 ((textUntil taggedOrBrace) <|> taggedText)
   char '}'
   return (Tagged name text)
 
