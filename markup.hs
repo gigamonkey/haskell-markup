@@ -127,11 +127,7 @@ singleNL = do
   indentation
   return ' '
 
-eol = do
-  whitespace
-  char '\n'
-  return ()
-  <?> "end of line"
+eol = whitespace >> (void (char '\n')) <?> "end of line"
 
 blank = do
   eol <|> try eof
