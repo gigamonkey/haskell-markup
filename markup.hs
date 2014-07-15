@@ -13,10 +13,12 @@ data Markup = Document [Markup]
             | Text String
             | Verbatim String
             | Blockquote [Markup]
+            | OrderedList [Markup]
+            | UnorderedList [Markup]
+            | Item [Markup]
             deriving (Show, Eq)
 
-
--- Parser --------------------------------------------------------------
+-- Main elements -------------------------------------------------------
 
 document = do
   many (try eol)
@@ -24,10 +26,15 @@ document = do
   eof
   return (Document paragraphs)
 
-
--- Main elements -------------------------------------------------------
-
-element = indentation >> (header <|> section <|> verbatim <|> blockquote <|> paragraph)
+element = indentation >> (
+                          header <|>
+                          section <|>
+                          verbatim <|>
+                          unorderedList <|>
+                          orderedList <|>
+                          blockquote <|>
+                          paragraph
+                         )
 
 header = do
   level <- headerMarker
@@ -49,6 +56,9 @@ blockquote = indented 2 (liftM Blockquote (many1 element)) <?> "blockquote"
 
 paragraph  = liftM Paragraph paragraphText <?> "paragraph"
 
+unorderedList = list UnorderedList '-'
+
+orderedList = list OrderedList '#'
 
 -- And the nitty gritty details ----------------------------------------
 
@@ -106,6 +116,16 @@ sectionBody = notFollowedBy (string "#.") >> element
 
 name = many1 letter
 
+list c m = liftM c (indented 2 $ many1 $ try $ indentation >> listElement m) <?> "list"
+
+listElement m = do
+  try (char m >> char ' ')
+  indent 2
+  afterIndentation
+  contents <- many1 (indentation >> paragraph)
+  dedent 2
+  return (Item contents)
+
 
 -- Whitespace and indentation handling ---------------------------------
 
@@ -120,19 +140,29 @@ blank = do
   <?> "blank line"
 
 indented n p = do
-  (orig, soFar) <- getState
-  setState (orig + n, soFar)
+  indent n
   try (lookAhead (string (replicate n ' ')))
   r <- p
-  (_, soFar) <- getState
-  setState (orig, soFar)
+  dedent n
   return r
 
 indentation = do
   (current, soFar) <- getState
   let i = current - soFar
   try (string (replicate i ' '))
-  setState (current, current)
+  afterIndentation
+
+indent n = do
+  (orig, soFar) <- getState
+  setState (orig + n, soFar)
+
+dedent n = do
+  (orig, soFar) <- getState
+  setState (orig - n, soFar)
+
+afterIndentation = do
+  (i, _) <- getState
+  setState (i, i)
 
 newline = do
   (i, _) <- getState

@@ -13,6 +13,9 @@ i = Tagged "i"
 b = Tagged "b"
 v = Verbatim
 bq = Blockquote
+ul = UnorderedList
+ol = OrderedList
+li = Item
 
 emptyDoc    = d []
 fooDoc      = d [ p [ t "foo"]]
@@ -98,16 +101,14 @@ shouldParse =
   , ("p\n\n  A bq 1\n\n    B bq 2\n\n      C bq 3\n\n    D bq 2\n\n  E bq 1\n\np", d [ p [t "p"], bq [ p [t "A bq 1"], bq [ p [t "B bq 2"], bq [ p [t "C bq 3"] ], p [t "D bq 2"]], p [t "E bq 1"]], p [t "p"]])
   , ("foo\n\n  A bq 1\n\n    B bq 2\n\n      C bq 3\n\n    D bq 2\n\np",
      d [ p [t "foo"], bq [ p [t "A bq 1"], bq [ p [t "B bq 2"], bq [ p [t "C bq 3"]], p [t "D bq 2"]]], p [t "p"]])
-
   , ("bar\n\n  A bq 1\n\n    B bq 2\n\n      C bq 3\n\n         Xv1\n\n    D bq 2\n\np",
      d [ p [t "bar"], bq [ p [t "A bq 1"], bq [ p [t "B bq 2"], bq [ p [t "C bq 3"], v "Xv1\n"], p [t "D bq 2"]]], p [t "p"]])
-
   , ("baz\n\n  A bq 1\n\n    B bq 2\n\n      C bq 3\n\n         Xv1\n          Yv2\n         Zv3\n\n    D bq 2\n\np",
      d [ p [t "baz"], bq [ p [t "A bq 1"], bq [ p [t "B bq 2"], bq [ p [t "C bq 3"], v "Xv1\n Yv2\nZv3\n" ], p [t "D bq 2"]]], p [t "p"]])
-
-
   , ("quux\n\n  A bq 1\n\n    B bq 2\n\n      C bq 3\n\n         Xv1\n          Yv2\n         Zv3\n\n    D bq 2\n\n  E bq 1\n\np",
      d [ p [t "quux"], bq [ p [t "A bq 1"], bq [ p [t "B bq 2"], bq [ p [t "C bq 3"], v "Xv1\n Yv2\nZv3\n" ], p [t "D bq 2"]], p [t "E bq 1"]], p [t "p"]])
+  , ("  - foo\n\n  - bar\n\n", d [ ul [ li [ p [t "foo"]], li [p [t "bar"]]]])
+  , ("  # foo\n\n  # bar\n\n", d [ ol [ li [ p [t "foo"]], li [p [t "bar"]]]])
   ]
 
 threeLineVerbatim = d [ v "line one\n line two\n line three\n"]
