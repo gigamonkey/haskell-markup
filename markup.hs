@@ -50,15 +50,15 @@ section = do
   return (Section name paragraphs)
   <?> "section"
 
-verbatim   = indented 3 (liftM Verbatim verbatimText) <?> "verbatim"
+verbatim      = indented 3 (liftM Verbatim verbatimText) <?> "verbatim"
 
-blockquote = indented 2 (liftM Blockquote (many1 element)) <?> "blockquote"
+blockquote    = indented 2 (liftM Blockquote (many1 element)) <?> "blockquote"
 
-paragraph  = liftM Paragraph paragraphText <?> "paragraph"
+paragraph     = liftM Paragraph paragraphText <?> "paragraph"
 
-unorderedList = list UnorderedList '-'
+unorderedList = list UnorderedList '-' <?> "unordered list"
 
-orderedList = list OrderedList '#'
+orderedList   = list OrderedList '#' <?> "ordered list"
 
 -- And the nitty gritty details ----------------------------------------
 
@@ -116,7 +116,7 @@ sectionBody = notFollowedBy (string "#.") >> element
 
 name = many1 letter
 
-list c m = liftM c (indented 2 $ many1 $ try $ indentation >> listElement m) <?> "list"
+list c m = liftM c $ indented 2 $ many1 $ try $ indentation >> listElement m
 
 listElement m = do
   try (char m >> char ' ')
