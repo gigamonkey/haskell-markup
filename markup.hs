@@ -116,7 +116,7 @@ sectionBody = notFollowedBy (string "#.") >> element
 
 name = many1 letter
 
-list c m = liftM c $ indented 2 $ many1 $ try $ indentation >> listElement m
+list c m = liftM c $ indented 2 $ many1 (try (indentation >> listElement m))
 
 listElement m = do
   try (char m >> char ' ')
