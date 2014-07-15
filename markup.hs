@@ -120,8 +120,7 @@ list c m = liftM c (indented 2 $ many1 $ try $ indentation >> listElement m) <?>
 
 listElement m = do
   try (char m >> char ' ')
-  indent 2
-  afterIndentation
+  extraIndentation 2
   contents <- many1 (indentation >> paragraph)
   dedent 2
   return (Item contents)
@@ -150,7 +149,7 @@ indentation = do
   (current, soFar) <- getState
   let i = current - soFar
   try (string (replicate i ' '))
-  afterIndentation
+  setState (current, current)
 
 indent n = do
   (orig, soFar) <- getState
@@ -160,9 +159,9 @@ dedent n = do
   (orig, soFar) <- getState
   setState (orig - n, soFar)
 
-afterIndentation = do
+extraIndentation n = do
   (i, _) <- getState
-  setState (i, i)
+  setState (i + n, i + n)
 
 newline = do
   (i, _) <- getState
