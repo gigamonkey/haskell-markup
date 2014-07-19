@@ -7,10 +7,10 @@ GHC_OPTS += -XNoMonomorphismRestriction
 
 all: $(binaries)
 
-check: tests
-	./tests
+check: test
+	./test
 
-tests: tests.hs markup.hs
+test: test.hs markup.hs
 
 lint:
 	/Users/peter/Library/Haskell/bin/hlint $(sources)
