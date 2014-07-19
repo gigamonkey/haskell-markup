@@ -16,6 +16,7 @@ bq = Blockquote
 ul = UnorderedList
 ol = OrderedList
 li = Item
+n  = Tagged "note"
 
 emptyDoc    = d []
 fooDoc      = d [ p [ t "foo"]]
@@ -109,6 +110,8 @@ shouldParse =
      d [ p [t "quux"], bq [ p [t "A bq 1"], bq [ p [t "B bq 2"], bq [ p [t "C bq 3"], v "Xv1\n Yv2\nZv3" ], p [t "D bq 2"]], p [t "E bq 1"]], p [t "p"]])
   , ("  - foo\n\n  - bar\n\n", d [ ul [ li [ p [t "foo"]], li [p [t "bar"]]]])
   , ("  # foo\n\n  # bar\n\n", d [ ol [ li [ p [t "foo"]], li [p [t "bar"]]]])
+  , ("Regular paragraph.\\b{Embedded note.} Rest of the paragraph.", d [p [t "Regular paragraph.", b [t "Embedded note."], t " Rest of the paragraph."]])
+  , ("Regular paragraph.\\note{Embedded note.} Rest of the paragraph.", d [p [t "Regular paragraph.", n [p [t "Embedded note."]], t " Rest of the paragraph."]])
   ]
 
 threeLineVerbatim = d [ v "line one\n line two\n line three"]

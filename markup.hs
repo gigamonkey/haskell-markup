@@ -98,7 +98,7 @@ verbatimLine = do
 verbatimBlankLine = try eol >> return "\n" <?> "verbatim blank"
 
 paragraphText = do
-  text <- many1 (textUntil taggedText <|> taggedText)
+  text <- many1 (textUntil tagOpen <|> taggedText)
   blank
   return text
 
@@ -106,22 +106,36 @@ textUntil p = liftM Text $ many1 $ charsUntil p
 
 charsUntil p = notFollowedBy p >> (plainChar <|> newlineChar <|> escapedChar)
 
-plainChar = noneOf "\\\n"
+plainChar = inSubdoc (noneOf "\\\n}") (noneOf "\\\n")
 
 newlineChar = notFollowedBy blank >> newline >> indentation >> return ' '
 
 escapedChar = char '\\' >> oneOf "\\{}*#"
 
 taggedText = do
+  name <- tagOpen
+  text <- if name == "note" then do subdocContents else do simpleContents
+  char '}'
+  return (Tagged name text)
+
+simpleContents = many1 (textUntil taggedOrBrace <|> taggedText)
+
+subdocContents = do
+  (a, b, subdocLevel) <- getState
+  setState (a, b, subdocLevel + 1)
+  paragraphs <- many1 element
+  eod
+  setState (a, b, subdocLevel - 1)
+  return paragraphs
+
+tagOpen = do
   notFollowedBy escapedChar
   char '\\'
   name <- name
   char '{'
-  text <- many1 (textUntil taggedOrBrace <|> taggedText)
-  char '}'
-  return (Tagged name text)
+  return name
 
-taggedOrBrace = void taggedText <|> void (char '}')
+taggedOrBrace = void tagOpen <|> void (char '}')
 
 sectionMarker = do
   string "# "
@@ -149,7 +163,7 @@ whitespace = many (oneOf " \t") <?> "whitespace"
 
 eol = whitespace >> newline <?> "end of line"
 
-eod = eof
+eod = inSubdoc braceAsEod eof
 
 blank = do
   eol <|> try eod
@@ -187,3 +201,13 @@ newline = do
   setState (i, 0, subdocLevel)
   void (char '\n')
   <?> "newline"
+
+braceAsEod = void $ lookAhead $ char '}'
+
+inSubdoc p1 p2 = do
+  subdocLevel <- getSubdocLevel
+  if subdocLevel > 0 then do p1 else do p2
+
+getSubdocLevel = do
+  (_, _, subdocLevel) <- getState
+  return subdocLevel
