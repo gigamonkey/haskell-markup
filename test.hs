@@ -1,5 +1,5 @@
 import Control.Monad
-import Text.ParserCombinators.Parsec
+import Text.Parsec
 import Markup
 
 -- Tests ---------------------------------------------------------------
@@ -129,8 +129,7 @@ main = forM_ shouldParse $ \t ->
     (True, _)    -> "."
     (False, msg) -> "\nFAIL: " ++ homoiconic (fst t) ++ ":\n" ++ msg ++ "\n"
 
-testParse :: String -> Either ParseError Markup
-testParse = runParser document (0, 0) "input string"
+testParse = runParser document (0, 0, 0) "input string"
 
 check (input, expected) =
   case testParse input of

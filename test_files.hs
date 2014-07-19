@@ -36,7 +36,7 @@ text t        = String $ T.pack t
 -- Parse test files ----------------------------------------------------
 
 testParse :: String -> String -> Either ParseError Markup
-testParse file = runParser document (0, 0) file
+testParse file = runParser document (0, 0, 0) file
 
 compareParses a bytes markup = do
   case decode bytes of

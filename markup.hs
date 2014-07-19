@@ -1,4 +1,16 @@
-module Markup where
+module Markup
+    (Markup(Document,
+            Header,
+            Paragraph,
+            Section,
+            Tagged,
+            Text,
+            Verbatim,
+            Blockquote,
+            UnorderedList,
+            OrderedList,
+            Item),
+     document) where
 
 import Control.Monad
 import Text.Parsec hiding (newline)
@@ -20,10 +32,11 @@ data Markup = Document [Markup]
 
 -- Main elements -------------------------------------------------------
 
+document :: Stream s m Char => ParsecT s (Int, Int, Int) m Markup
 document = do
   many (try eol)
   paragraphs <- many element
-  eof
+  eod
   return (Document paragraphs)
 
 element = indentation >> (
@@ -79,7 +92,7 @@ verbatimText = do
 verbatimLine = do
   indentation
   text <- many1 (notFollowedBy eol >> anyChar)
-  eol <|> try eof
+  eol <|> try eod
   return (text ++ "\n")
 
 verbatimBlankLine = try eol >> return "\n" <?> "verbatim blank"
@@ -136,9 +149,11 @@ whitespace = many (oneOf " \t") <?> "whitespace"
 
 eol = whitespace >> newline <?> "end of line"
 
+eod = eof
+
 blank = do
-  eol <|> try eof
-  eol <|> eof
+  eol <|> try eod
+  eol <|> eod
   return ()
   <?> "blank line"
 
@@ -150,25 +165,25 @@ indented n p = do
   return r
 
 indentation = do
-  (current, soFar) <- getState
+  (current, soFar, subdocLevel) <- getState
   let i = current - soFar
   try (string (replicate i ' '))
-  setState (current, current)
+  setState (current, current, subdocLevel)
 
 indent n = do
-  (orig, soFar) <- getState
-  setState (orig + n, soFar)
+  (orig, soFar, subdocLevel) <- getState
+  setState (orig + n, soFar, subdocLevel)
 
 dedent n = do
-  (orig, soFar) <- getState
-  setState (orig - n, soFar)
+  (orig, soFar, subdocLevel) <- getState
+  setState (orig - n, soFar, subdocLevel)
 
 extraIndentation n = do
-  (i, _) <- getState
-  setState (i + n, i + n)
+  (i, _, subdocLevel) <- getState
+  setState (i + n, i + n, subdocLevel)
 
 newline = do
-  (i, _) <- getState
-  setState (i, 0)
+  (i, _, subdocLevel) <- getState
+  setState (i, 0, subdocLevel)
   void (char '\n')
   <?> "newline"
