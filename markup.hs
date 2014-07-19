@@ -70,7 +70,11 @@ headerMarker = do
 verbatimText = do
   lines <- many1 (verbatimLine <|> verbatimBlankLine)
   return (concat $ dropTrailingBlanks lines)
-      where dropTrailingBlanks lines = reverse $ dropWhile ("\n" ==) $ reverse lines
+      where dropTrailingBlanks lines = reverse $ (dropLastNewline (dropWhile ("\n" ==) $ reverse lines))
+            dropLastNewline lines =
+                case lines of
+                  head:tail -> (reverse (dropWhile ('\n' ==) $ reverse head)) : tail
+                  [] -> lines
 
 verbatimLine = do
   indentation

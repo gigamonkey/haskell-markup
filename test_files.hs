@@ -57,6 +57,4 @@ checkFile a = do
   putStr a
   putStrLn $ " ... " ++ (message (compareParses a bytes markup))
 
-main = do
-  args <- getArgs
-  forM_ args checkFile
+main = getArgs >>= mapM_ checkFile
