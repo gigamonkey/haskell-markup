@@ -127,10 +127,15 @@ homoiconic s =
           '"'  -> "\\\""
           _    -> [c]
 
-main = forM_ shouldParse $ \t ->
+main = do
+  forM_ shouldParse $ emitResult
+  putStrLn ""
+
+
+emitResult t = do
   putStr $ case check t of
-    (True, _)    -> "."
-    (False, msg) -> "\nFAIL: " ++ homoiconic (fst t) ++ ":\n" ++ msg ++ "\n"
+             (True, _)    -> "."
+             (False, msg) -> "\nFAIL: " ++ homoiconic (fst t) ++ ":\n" ++ msg ++ "\n"
 
 testParse = runParser document (0, 0, 0) "input string"
 

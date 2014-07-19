@@ -10,6 +10,7 @@ all: $(binaries)
 
 check: test
 	./test
+	./test_files tests/*.txt
 
 test: test.hs markup.hs
 

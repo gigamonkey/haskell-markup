@@ -110,7 +110,7 @@ plainChar = inSubdoc (noneOf "\\\n}") (noneOf "\\\n")
 
 newlineChar = notFollowedBy blank >> newline >> indentation >> return ' '
 
-escapedChar = char '\\' >> oneOf "\\{}*#"
+escapedChar = char '\\' >> oneOf "\\{}*#-"
 
 taggedText = do
   name <- tagOpen
