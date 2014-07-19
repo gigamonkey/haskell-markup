@@ -8,8 +8,13 @@ import qualified Data.ByteString.Lazy.Char8 as B
 import qualified Data.Text as T
 import qualified Data.Vector as V
 
+data Result = BadJson B.ByteString
+            | BadParse ParseError
+            | Mismatch Value Value
+            | Okay
 
--- Tests ---------------------------------------------------------------
+
+-- Markup to Json ------------------------------------------------------
 
 jsonify :: Markup -> Value
 jsonify (Document ms)      = tagged "body" ms
@@ -27,26 +32,31 @@ jsonify (Verbatim s)       = Array (V.fromList $ [(text "pre"), (text s)])
 tagged tag ms = Array (V.fromList $ (text tag) : (map jsonify ms))
 text t        = String $ T.pack t
 
+
+-- Parse test files ----------------------------------------------------
+
 testParse :: String -> String -> Either ParseError Markup
 testParse file = runParser document (0, 0) file
 
-okay b = if b then " ... okay" else " ... WHOOPS!"
+compareParses a bytes markup = do
+  case decode bytes of
+    Just j -> do
+      case (testParse a markup) of
+        Right m -> if (j == (jsonify m)) then Okay else  (Mismatch j (jsonify m))
+        Left e  -> BadParse e
+    Nothing -> BadJson bytes
+
+message (BadJson bs)   = "Bad JSON: " ++ (show bs)
+message (BadParse e)   = "Markup parse error: " ++ (show e)
+message (Mismatch e g) = "Whoops!\nExpected: " ++ (show e) ++ "\nGot: " ++ (show g)
+message Okay           = "okay"
+
+checkFile a = do
+  bytes  <- B.readFile $ (take ((length a) - (length ".txt")) a) ++ ".json"
+  markup <- readFile a
+  putStr a
+  putStrLn $ " ... " ++ (message (compareParses a bytes markup))
 
 main = do
   args <- getArgs
-  forM_ args $ \a -> do
-         bytes  <- B.readFile $ (take ((length a) - (length ".txt")) a) ++ ".json"
-         markup <- readFile a
-         case decode bytes of
-           Just j -> do
-                     putStr $ a
-                     case (testParse a markup) of
-                       Right m -> if (j /= (jsonify m)) then do
-                                      putStrLn " ... Whoops!"
-                                      putStrLn $ "JSON: " ++ (show j)
-                                      putStrLn $ "Markup: " ++ (show (jsonify m))
-                                  else do
-                                      putStrLn " ... okay"
-                       Left e  -> do
-                             putStrLn $ " ... parsing error: " ++ (show e)
-           Nothing -> putStrLn $ "Couldn't parse json in " ++ (show bytes)
+  forM_ args checkFile
