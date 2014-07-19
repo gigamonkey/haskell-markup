@@ -125,7 +125,7 @@ list c m = liftM c $ indented 2 $ many1 (try (indentation >> listElement m))
 listElement m = do
   try (char m >> char ' ')
   extraIndentation 2
-  contents <- many1 (indentation >> paragraph)
+  contents <- many1 (indentation >> (orderedList <|> unorderedList <|> paragraph))
   dedent 2
   return (Item contents)
 
