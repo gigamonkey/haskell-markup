@@ -4,14 +4,14 @@ import Markup
 
 -- Tests ---------------------------------------------------------------
 
-d = Document
-p = Paragraph
-t = Text
-h = Header
-s = Section
-i = Tagged "i"
-b = Tagged "b"
-v = Verbatim
+d  = Document
+p  = Paragraph
+t  = Text
+h  = Header
+s  = Section
+i  = Tagged "i"
+b  = Tagged "b"
+v  = Verbatim
 bq = Blockquote
 ul = UnorderedList
 ol = OrderedList
@@ -34,7 +34,7 @@ complexDoc1 = d [
   ]
 oneHeader = d [h 1 [t "foo"]]
 twoHeaders = d [h 1 [t "foo"], h 2 [t "bar"]]
-simpleVerbatim = d [ v "verbatim\n"]
+simpleVerbatim = d [ v "verbatim"]
 
 shouldParse =
   [ ("", emptyDoc)
@@ -80,18 +80,18 @@ shouldParse =
   , ("   verbatim",                                                             simpleVerbatim)
   , ("   verbatim\n",                                                           simpleVerbatim)
   , ("   verbatim\n\n",                                                         simpleVerbatim)
-  , ("   verbatim\n   verbatim2\n",                                             d [ v "verbatim\nverbatim2\n"])
-  , ("   verbatim\n\n   verbatim2\n",                                           d [ v "verbatim\n\nverbatim2\n"])
-  , ("   verbatim\n\n\n   verbatim2\n",                                         d [ v "verbatim\n\n\nverbatim2\n"])
+  , ("   verbatim\n   verbatim2\n",                                             d [ v "verbatim\nverbatim2"])
+  , ("   verbatim\n\n   verbatim2\n",                                           d [ v "verbatim\n\nverbatim2"])
+  , ("   verbatim\n\n\n   verbatim2\n",                                         d [ v "verbatim\n\n\nverbatim2"])
   , ("   verbatim\n\n\n",                                                       simpleVerbatim)
   , ("   verbatim\n\nfoo",                                                      verbatimThenParagraph)
   , ("   verbatim\n\n\nfoo",                                                    verbatimThenParagraph)
   , ("   line one\n    line two\n    line three",                               threeLineVerbatim)
-  , ("   line one\n     line two\n    line three",                              d [ v "line one\n  line two\n line three\n"])
-  , ("regular\n\n   verbatim\n\nregular",                                       d [ p [t "regular"], v "verbatim\n", p [t "regular"]])
+  , ("   line one\n     line two\n    line three",                              d [ v "line one\n  line two\n line three"])
+  , ("regular\n\n   verbatim\n\nregular",                                       d [ p [t "regular"], v "verbatim", p [t "regular"]])
   , ("regular\n\n  blockquote\n\nregular",                                      d [ p [t "regular"], bq [ p [t "blockquote"]], p [t "regular"]])
   , ("regular\n\n  blockquote\n  and more\n\nregular",                          d [ p [t "regular"], bq [ p [t "blockquote and more"]], p [t "regular"]])
-  , ("regular\n\n  blockquote\n  and more\n\n     verbatim\n\nregular",         d [ p [t "regular"], bq [ p [t "blockquote and more"], v "verbatim\n" ], p [t "regular"]])
+  , ("regular\n\n  blockquote\n  and more\n\n     verbatim\n\nregular",         d [ p [t "regular"], bq [ p [t "blockquote and more"], v "verbatim" ], p [t "regular"]])
   , ("regular\n\n  blockquote\n  and more\n\n    nested blockquote\n\nregular", d [ p [t "regular"], bq [ p [t "blockquote and more"], bq [p [t "nested blockquote" ]]], p [t "regular"]])
   , ("regular\n\n  blockquote\n  and more\n\n  second paragraph\n\nregular",    twoParagraphBq)
   , ("regular\n\n  blockquote\n  and more\n \n  second paragraph\n\nregular",   twoParagraphBq)
@@ -102,18 +102,18 @@ shouldParse =
   , ("foo\n\n  A bq 1\n\n    B bq 2\n\n      C bq 3\n\n    D bq 2\n\np",
      d [ p [t "foo"], bq [ p [t "A bq 1"], bq [ p [t "B bq 2"], bq [ p [t "C bq 3"]], p [t "D bq 2"]]], p [t "p"]])
   , ("bar\n\n  A bq 1\n\n    B bq 2\n\n      C bq 3\n\n         Xv1\n\n    D bq 2\n\np",
-     d [ p [t "bar"], bq [ p [t "A bq 1"], bq [ p [t "B bq 2"], bq [ p [t "C bq 3"], v "Xv1\n"], p [t "D bq 2"]]], p [t "p"]])
+     d [ p [t "bar"], bq [ p [t "A bq 1"], bq [ p [t "B bq 2"], bq [ p [t "C bq 3"], v "Xv1"], p [t "D bq 2"]]], p [t "p"]])
   , ("baz\n\n  A bq 1\n\n    B bq 2\n\n      C bq 3\n\n         Xv1\n          Yv2\n         Zv3\n\n    D bq 2\n\np",
-     d [ p [t "baz"], bq [ p [t "A bq 1"], bq [ p [t "B bq 2"], bq [ p [t "C bq 3"], v "Xv1\n Yv2\nZv3\n" ], p [t "D bq 2"]]], p [t "p"]])
+     d [ p [t "baz"], bq [ p [t "A bq 1"], bq [ p [t "B bq 2"], bq [ p [t "C bq 3"], v "Xv1\n Yv2\nZv3" ], p [t "D bq 2"]]], p [t "p"]])
   , ("quux\n\n  A bq 1\n\n    B bq 2\n\n      C bq 3\n\n         Xv1\n          Yv2\n         Zv3\n\n    D bq 2\n\n  E bq 1\n\np",
-     d [ p [t "quux"], bq [ p [t "A bq 1"], bq [ p [t "B bq 2"], bq [ p [t "C bq 3"], v "Xv1\n Yv2\nZv3\n" ], p [t "D bq 2"]], p [t "E bq 1"]], p [t "p"]])
+     d [ p [t "quux"], bq [ p [t "A bq 1"], bq [ p [t "B bq 2"], bq [ p [t "C bq 3"], v "Xv1\n Yv2\nZv3" ], p [t "D bq 2"]], p [t "E bq 1"]], p [t "p"]])
   , ("  - foo\n\n  - bar\n\n", d [ ul [ li [ p [t "foo"]], li [p [t "bar"]]]])
   , ("  # foo\n\n  # bar\n\n", d [ ol [ li [ p [t "foo"]], li [p [t "bar"]]]])
   ]
 
-threeLineVerbatim = d [ v "line one\n line two\n line three\n"]
+threeLineVerbatim = d [ v "line one\n line two\n line three"]
 twoParagraphBq = d [ p [t "regular"], bq [ p [t "blockquote and more"], p [t "second paragraph" ]], p [t "regular"]]
-verbatimThenParagraph = d [ v "verbatim\n", p [ t "foo"]]
+verbatimThenParagraph = d [ v "verbatim", p [ t "foo"]]
 
 homoiconic s =
   concat (["\""] ++ map hc s ++ ["\""])
