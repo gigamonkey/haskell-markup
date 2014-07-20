@@ -56,13 +56,29 @@ compareParses a bytes markup = do
         Left e  -> BadParse e
     Nothing -> BadJson bytes
 
-checkFile a = do
+checkFile :: (Int, Int, Int, Int) -> String -> IO (Int, Int, Int, Int)
+checkFile (bj, bp, m, ok) a = do
   bytes  <- B.readFile $ (take ((length a) - (length ".txt")) a) ++ ".json"
   markup <- readFile a
   case (compareParses a bytes markup) of
-    BadJson bs -> do putStrLn $ "\n*** Bad JSON: in " ++ a ++ "\n" ++ (show bs)
-    BadParse e -> do putStrLn $ "\n*** Parse error in " ++ a ++ "\n" ++ (show e) ++ "\n" ++ (show markup)
-    Mismatch e g -> do putStrLn $ "\n" ++ a ++ " whoops!\n\n" ++ (show e) ++ "\n\n" ++ (show g)
-    Okay           -> do putStr "."
+    BadJson bs   -> do
+      putStrLn $ "\n*** Bad JSON: in " ++ a ++ "\n" ++ (show bs)
+      return (bj + 1, bp, m, ok)
+    BadParse e   -> do
+      putStrLn $ "\n*** Parse error in " ++ a ++ "\n" ++ (show e) ++ "\n" ++ (show markup)
+      return (bj, bp + 1, m, ok)
+    Mismatch e g -> do
+      putStrLn $ "\n" ++ a ++ " whoops!\n\n" ++ (show e) ++ "\n\n" ++ (show g)
+      return (bj, bp, m + 1, ok)
+    Okay         -> do
+      putStr "."
+      return (bj, bp, m, ok + 1)
 
-main = getArgs >>= mapM_ checkFile
+showResults (bj, bp, m, ok) = do
+  putStrLn $ "\n"
+  putStrLn $ "Bad JSON   : " ++ (show bj)
+  putStrLn $ "Bad Parses : " ++ (show bp)
+  putStrLn $ "Mismatches : " ++ (show m)
+  putStrLn $ "Okay       : " ++ (show ok)
+
+main = getArgs >>= foldM checkFile (0, 0, 0, 0) >>= showResults
