@@ -16,6 +16,9 @@ bq = Blockquote
 ul = UnorderedList
 ol = OrderedList
 li = Item
+dl = DefinitionList
+dt = Term
+dd = Definition
 n  = Tagged "note"
 
 emptyDoc    = d []
@@ -120,6 +123,9 @@ shouldParse =
   , ("foo\n\n  # item1\n\n  # item2\n\nbar\n\n", d [p [t "foo"], ol [li [p [t "item1"]], li [p [t "item2"]]], p [t "bar"]])
   , ("foo\\note{quux\n\n  # item1\n\n  # item2\n\n} bar\n\n", d [p [t "foo", n [p [t "quux"], ol [li [p [t "item1"]], li [p [t "item2"]]]], t " bar"]])
   , ("   verbatim\n   \n\n", d [v "verbatim"])
+  , ("foo\n\n  % term %\n  defn\n\n", d [p [t "foo"], dl [ dt [t "term"], dd [p [t "defn"]]]])
+  , ("foo\n\n  % term %\n  defn\n\n  bar\n\n", d [p [t "foo"], dl [ dt [t "term"], dd [p [t "defn"], p [t "bar"]]]])
+  , ("foo\n\n  % term %\n  defn\n\n  bar\n\n  % term2 %\n  defn2\n\n  bar2\n\n", d [p [t "foo"], dl [ dt [t "term"], dd [p [t "defn"], p [t "bar"]], dt [t "term2"], dd [p [t "defn2"], p [t "bar2"]]]])
   ]
 
 threeLineVerbatim = d [ v "line one\n line two\n line three"]

@@ -3,6 +3,7 @@ module Markup
             Header,
             Paragraph,
             Section,
+            SectionDivider,
             Tagged,
             Text,
             Verbatim,
@@ -26,6 +27,7 @@ data Markup = Document [Markup]
             | Header Int [Markup]
             | Paragraph [Markup]
             | Section String [Markup]
+            | SectionDivider
             | Tagged String [Markup]
             | Text String
             | Verbatim String
@@ -59,6 +61,7 @@ element = indentation >> (
                           definitionList <|>
                           blockquote <|>
                           (try linkdef) <|>
+                          sectionDivider <|>
                           paragraph
                          )
 
@@ -88,6 +91,11 @@ orderedList   = list OrderedList '#' <?> "ordered list"
 
 unorderedList = list UnorderedList '-' <?> "unordered list"
 
+sectionDivider = do
+  char '§'
+  blank
+  return SectionDivider
+
 definitionList = indented 2 (lookAhead term >> (liftM DefinitionList (many1 (term <|> definition)))) <?> "definition list"
 
 term = do
@@ -97,11 +105,16 @@ term = do
   eol
   return (Term term)
 
-definition = liftM Definition (many1 (indentation >> paragraph))
+definition = liftM Definition $ many1 definitionP
+
+definitionP = do
+  try (indentation >> notFollowedBy (string "% "))
+  paragraph
+
 
 linkdef = do
   char '['
-  name <- many (noneOf "]")
+  name <- many1 (charsUntil (char ']'))
   string "] <"
   link <- many (noneOf ">")
   char '>'
@@ -155,17 +168,17 @@ linkKey = char '|' >> many1 (noneOf "]")
 
 textUntil p = liftM Text $ many1 $ charsUntil p
 
-charsUntil p = notFollowedBy p >> (plainChar <|> newlineChar <|> escapedChar)
+charsUntil p = notFollowedBy p >> (escapedChar <|> newlineChar <|> plainChar)
 
-plainChar = inSubdoc (noneOf "\\\n}") (noneOf "\\\n")
+plainChar = inSubdoc (noneOf "}") anyChar
 
 newlineChar = notFollowedBy blank >> newline >> indentation >> return ' '
 
-escapedChar = (char '\\' >> oneOf "\\{}*#-[]%|<") <?> "escaped char"
+escapedChar = try (char '\\' >> oneOf "\\{}*#-[]%|<") <?> "escaped char"
 
 taggedText = do
   name <- tagOpen
-  text <- if name == "note" then do subdocContents else do simpleContents
+  text <- if (name == "note" || name == "comment") then do subdocContents else do simpleContents
   char '}'
   return (Tagged name text)
 
@@ -237,7 +250,7 @@ indented n p = do
 indentation = do
   (current, soFar, subdocLevel) <- getState
   let i = current - soFar
-  try (string (replicate i ' '))
+  try $ count i (char ' ')
   setState (current, current, subdocLevel)
 
 indent n = do

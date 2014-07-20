@@ -36,7 +36,7 @@ jsonify (Link ms (Just k))            = tagged2 "link" ((map jsonify ms) ++ [(ta
 jsonify (DefinitionList ms)           = tagged "dl" ms
 jsonify (Term ms)                     = tagged "dt" ms
 jsonify (Definition ms)               = tagged "dd" ms
-
+jsonify SectionDivider                = taggedText "section" "§"
 
 tagged tag ms = Array (V.fromList $ (text tag) : (map jsonify ms))
 text t        = String $ T.pack t
@@ -76,10 +76,19 @@ report a (BadParse _ _) = putStrLn $ "FAIL (Bad parse) ...... " ++ a
 report a (Mismatch _ _ _) = putStrLn $ "FAIL (Mismatch) ....... " ++ a
 report _ Okay           = return ()
 
-verboseReport a (BadJson bs)   = putStrLn $ "Bad JSON in " ++ a ++ "\n\n" ++ (show bs)
-verboseReport a (BadParse e m) = putStrLn $ "Parse error in " ++ a ++ "\n" ++ (show e) ++ "\n\n" ++ (show m)
-verboseReport a (Mismatch e g m) = putStrLn $ "Mismatch in " ++ a ++ "\n\n" ++ (show e) ++ "\n\n" ++ (show g) ++ "\n\n" ++ (show m)
-verboseReport _ Okay           = putStr "."
+verboseReport a (BadJson bs)     = putStrLn $ "Bad JSON in " ++ a ++ "\n\n" ++ (show bs)
+verboseReport a (BadParse e m)   = putStrLn $ "Parse error in " ++ a ++ "\n" ++ (show e) ++ "\n\n" ++ (show m)
+verboseReport _ Okay             = putStr "."
+verboseReport a (Mismatch e g _) = do
+    putStrLn $ "Mismatch in " ++ a ++ "\n\n"
+    putStrLn "-- Expected ------"
+    putStrLn (show e)
+    putStrLn "------------------"
+    putStrLn ""
+    putStrLn "-- Got -----------"
+    putStrLn (show g)
+    putStrLn "------------------"
+
 
 showResults (bj, bp, m, ok) = do
   putStrLn $ "\n"
