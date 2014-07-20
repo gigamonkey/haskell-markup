@@ -120,7 +120,7 @@ verbatimLine = do
 verbatimBlankLine = try eol >> return "\n" <?> "verbatim blank"
 
 paragraphText = do
-  text <- many1 (textUntil ((void tagOpen) <|> (void (char '['))) <|> taggedText <|> link)
+  text <- many1 (textUntil ((void tagOpen) <|> (void (char '[')) <|> blank) <|> taggedText <|> link)
   blank
   return text
 

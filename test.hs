@@ -112,6 +112,8 @@ shouldParse =
   , ("  # foo\n\n  # bar\n\n", d [ ol [ li [ p [t "foo"]], li [p [t "bar"]]]])
   , ("Regular paragraph.\\b{Embedded note.} Rest of the paragraph.", d [p [t "Regular paragraph.", b [t "Embedded note."], t " Rest of the paragraph."]])
   , ("Regular paragraph.\\note{Embedded note.} Rest of the paragraph.", d [p [t "Regular paragraph.", n [p [t "Embedded note."]], t " Rest of the paragraph."]])
+  , ("foo   \n\n", d [p [t "foo"]])
+  , ("foo   \n\nbar\n\n", d [p [t "foo"], p [t "bar"]])
   ]
 
 threeLineVerbatim = d [ v "line one\n line two\n line three"]
