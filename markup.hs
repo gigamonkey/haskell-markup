@@ -31,7 +31,7 @@ data Markup = Document [Markup]
             | UnorderedList [Markup]
             | Item [Markup]
             | Linkdef String String
-            | Link String (Maybe String)
+            | Link [Markup] (Maybe String)
             deriving (Show, Eq)
 
 -- Main elements -------------------------------------------------------
@@ -126,10 +126,12 @@ paragraphText = do
 
 link = do
   char '['
-  link <- many1 (noneOf "|]")
+  contents <- linkContents
   maybeKey <- optionMaybe linkKey
   char ']'
-  return (Link link maybeKey)
+  return (Link contents maybeKey)
+
+linkContents = many1 (textUntil taggedOrBracket <|> taggedText)
 
 linkKey = char '|' >> many1 (noneOf "]")
 
@@ -167,6 +169,8 @@ tagOpen = do
   return name
 
 taggedOrBrace = void tagOpen <|> void (char '}')
+
+taggedOrBracket = void tagOpen <|> void (oneOf "|]")
 
 sectionMarker = do
   string "## "
