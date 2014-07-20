@@ -9,8 +9,8 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 
 data Result = BadJson B.ByteString
-            | BadParse ParseError
-            | Mismatch Value Value
+            | BadParse ParseError String
+            | Mismatch Value Value Markup
             | Okay
 
 
@@ -52,27 +52,31 @@ compareParses a bytes markup = do
   case decode bytes of
     Just j -> do
       case (testParse a markup) of
-        Right m -> if (j == (jsonify m)) then Okay else  (Mismatch j (jsonify m))
-        Left e  -> BadParse e
+        Right m -> if (j == (jsonify m)) then Okay else  (Mismatch j (jsonify m) m)
+        Left e  -> BadParse e markup
     Nothing -> BadJson bytes
 
-checkFile :: (Int, Int, Int, Int) -> String -> IO (Int, Int, Int, Int)
-checkFile (bj, bp, m, ok) a = do
+checkFile reporter summary a = do
   bytes  <- B.readFile $ (take ((length a) - (length ".txt")) a) ++ ".json"
   markup <- readFile a
-  case (compareParses a bytes markup) of
-    BadJson bs   -> do
-      putStrLn $ "\n*** Bad JSON: in " ++ a ++ "\n" ++ (show bs)
-      return (bj + 1, bp, m, ok)
-    BadParse e   -> do
-      putStrLn $ "\n*** Parse error in " ++ a ++ "\n" ++ (show e) ++ "\n" ++ (show markup)
-      return (bj, bp + 1, m, ok)
-    Mismatch e g -> do
-      putStrLn $ "\n" ++ a ++ " whoops!\n\n" ++ (show e) ++ "\n\n" ++ (show g)
-      return (bj, bp, m + 1, ok)
-    Okay         -> do
-      putStr "."
-      return (bj, bp, m, ok + 1)
+  let result = (compareParses a bytes markup)
+  reporter a result
+  return (summarize summary result)
+
+summarize (bj, bp, m, ok) (BadJson _)    = (bj + 1, bp, m, ok)
+summarize (bj, bp, m, ok) (BadParse _ _) = (bj, bp + 1, m, ok)
+summarize (bj, bp, m, ok) (Mismatch _ _ _) = (bj, bp, m + 1, ok)
+summarize (bj, bp, m, ok) Okay           = (bj, bp, m, ok + 1)
+
+report a (BadJson _)    = putStrLn $ "Whoops! (Bad json) .... " ++ a
+report a (BadParse _ _) = putStrLn $ "FAIL (Bad parse) ...... " ++ a
+report a (Mismatch _ _ _) = putStrLn $ "FAIL (Mismatch) ....... " ++ a
+report _ Okay           = return ()
+
+verboseReport a (BadJson bs)   = putStrLn $ "Bad JSON in " ++ a ++ "\n\n" ++ (show bs)
+verboseReport a (BadParse e m) = putStrLn $ "Parse error in " ++ a ++ "\n" ++ (show e) ++ "\n\n" ++ (show m)
+verboseReport a (Mismatch e g m) = putStrLn $ "Mismatch in " ++ a ++ "\n\n" ++ (show e) ++ "\n\n" ++ (show g) ++ "\n\n" ++ (show m)
+verboseReport _ Okay           = putStr "."
 
 showResults (bj, bp, m, ok) = do
   putStrLn $ "\n"
@@ -81,4 +85,9 @@ showResults (bj, bp, m, ok) = do
   putStrLn $ "Mismatches : " ++ (show m)
   putStrLn $ "Okay       : " ++ (show ok)
 
-main = getArgs >>= foldM checkFile (0, 0, 0, 0) >>= showResults
+reporter args = if (length args) == 1 then verboseReport else report
+
+main = do
+  args <- getArgs
+  results <- foldM (checkFile (reporter args)) (0, 0, 0, 0) args
+  if (length args) == 1 then return () else showResults results
