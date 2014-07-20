@@ -7,9 +7,12 @@ module Markup
             Text,
             Verbatim,
             Blockquote,
-            UnorderedList,
             OrderedList,
+            UnorderedList,
+            DefinitionList,
             Item,
+            Term,
+            Definition,
             Linkdef,
             Link),
      document) where
@@ -29,6 +32,9 @@ data Markup = Document [Markup]
             | Blockquote [Markup]
             | OrderedList [Markup]
             | UnorderedList [Markup]
+            | DefinitionList [Markup]
+            | Term [Markup]
+            | Definition [Markup]
             | Item [Markup]
             | Linkdef String String
             | Link [Markup] (Maybe String)
@@ -48,10 +54,11 @@ element = indentation >> (
                           header <|>
                           section <|>
                           verbatim <|>
-                          unorderedList <|>
                           orderedList <|>
+                          unorderedList <|>
+                          definitionList <|>
                           blockquote <|>
-                          linkdef <|>
+                          (try linkdef) <|>
                           paragraph
                          )
 
@@ -77,9 +84,20 @@ blockquote    = indented 2 (liftM Blockquote (many1 element)) <?> "blockquote"
 
 paragraph     = liftM Paragraph paragraphText <?> "paragraph"
 
+orderedList   = list OrderedList '#' <?> "ordered list"
+
 unorderedList = list UnorderedList '-' <?> "unordered list"
 
-orderedList   = list OrderedList '#' <?> "ordered list"
+definitionList = indented 2 (lookAhead term >> (liftM DefinitionList (many1 (term <|> definition)))) <?> "definition list"
+
+term = do
+  try (indentation >> string "% ")
+  term <- many1 (textUntil taggedOrPercent <|> taggedText)
+  string " %"
+  eol
+  return (Term term)
+
+definition = liftM Definition (many1 (indentation >> paragraph))
 
 linkdef = do
   char '['
@@ -120,7 +138,7 @@ verbatimLine = do
 verbatimBlankLine = try eol >> return "\n" <?> "verbatim blank"
 
 paragraphText = do
-  text <- many1 (textUntil ((void tagOpen) <|> (void (char '[')) <|> blank) <|> taggedText <|> link)
+  text <- many1 (textUntil (void tagOpen <|> void (char '[') <|> blank) <|> taggedText <|> link)
   blank
   return text
 
@@ -143,7 +161,7 @@ plainChar = inSubdoc (noneOf "\\\n}") (noneOf "\\\n")
 
 newlineChar = notFollowedBy blank >> newline >> indentation >> return ' '
 
-escapedChar = char '\\' >> oneOf "\\{}*#-[]"
+escapedChar = (char '\\' >> oneOf "\\{}*#-[]%|<") <?> "escaped char"
 
 taggedText = do
   name <- tagOpen
@@ -167,10 +185,13 @@ tagOpen = do
   name <- name
   char '{'
   return name
+  <?> "tagOpen"
 
 taggedOrBrace = void tagOpen <|> void (char '}')
 
 taggedOrBracket = void tagOpen <|> void (oneOf "|]")
+
+taggedOrPercent = void tagOpen <|> void (string " %")
 
 sectionMarker = do
   string "## "
@@ -200,11 +221,11 @@ eol = whitespace >> newline <?> "end of line"
 
 eod = inSubdoc braceAsEod eof
 
-blank = do
-  eol <|> try eod
+blank =  do
   eol <|> eod
+  void (many1 (try eol)) <|> eod
   return ()
-  <?> "blank line"
+  <?> "blank"
 
 indented n p = do
   indent n

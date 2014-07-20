@@ -33,6 +33,9 @@ jsonify (Link ((Text n):[]) Nothing)  = taggedText "link" n
 jsonify (Link ms Nothing)             = tagged "link" ms
 jsonify (Link ((Text n):[]) (Just k)) = tagged2 "link" [text n, taggedText "key" k]
 jsonify (Link ms (Just k))            = tagged2 "link" ((map jsonify ms) ++ [(taggedText "key" k)])
+jsonify (DefinitionList ms)           = tagged "dl" ms
+jsonify (Term ms)                     = tagged "dt" ms
+jsonify (Definition ms)               = tagged "dd" ms
 
 
 tagged tag ms = Array (V.fromList $ (text tag) : (map jsonify ms))

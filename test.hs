@@ -113,6 +113,9 @@ shouldParse =
   , ("Regular paragraph.\\b{Embedded note.} Rest of the paragraph.", d [p [t "Regular paragraph.", b [t "Embedded note."], t " Rest of the paragraph."]])
   , ("Regular paragraph.\\note{Embedded note.} Rest of the paragraph.", d [p [t "Regular paragraph.", n [p [t "Embedded note."]], t " Rest of the paragraph."]])
   , ("foo   \n\n", d [p [t "foo"]])
+  , ("foo   \n\n\n", d [p [t "foo"]])
+  , ("foo   \n\n\n\n", d [p [t "foo"]])
+  , ("foo   \n\n\nbar", d [p [t "foo"], p [t "bar"]])
   , ("foo   \n\nbar\n\n", d [p [t "foo"], p [t "bar"]])
   ]
 
