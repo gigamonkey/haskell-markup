@@ -121,7 +121,7 @@ headerMarker = do
   return (length stars)
 
 verbatimText = do
-  lines <- many1 (verbatimLine <|> verbatimBlankLine)
+  lines <- many1 (verbatimBlankLine <|> verbatimLine)
   return (concat $ dropTrailingBlanks lines)
       where dropTrailingBlanks lines = reverse $ (dropLastNewline (dropWhile ("\n" ==) $ reverse lines))
             dropLastNewline lines =
@@ -176,7 +176,7 @@ subdocContents = do
   setState (a, b, subdocLevel + 1)
   paragraphs <- many1 element
   eod
-  setState (a, b, subdocLevel - 1)
+  setState (a, b, subdocLevel)
   return paragraphs
 
 tagOpen = do

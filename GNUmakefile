@@ -16,6 +16,8 @@ test: test.hs markup.hs
 
 test_files: test_files.hs markup.hs
 
+parse_test: parse_test.hs markup.hs
+
 lint:
 	/Users/peter/Library/Haskell/bin/hlint $(sources)
 
