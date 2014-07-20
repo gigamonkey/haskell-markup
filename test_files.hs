@@ -27,10 +27,18 @@ jsonify (OrderedList ms)   = tagged "ol" ms
 jsonify (UnorderedList ms) = tagged "ul" ms
 jsonify (Item ms)          = tagged "li" ms
 jsonify (Text s)           = text s
-jsonify (Verbatim s)       = Array (V.fromList $ [(text "pre"), (text s)])
+jsonify (Verbatim s)       = taggedText "pre" s
+jsonify (Linkdef n l)      = tagged2 "link_def" [taggedText "link" n, taggedText "url" l]
+jsonify (Link n Nothing)   = taggedText "link" n
+jsonify (Link n (Just k))  = tagged2 "link" [text n, taggedText "key" k]
+
 
 tagged tag ms = Array (V.fromList $ (text tag) : (map jsonify ms))
 text t        = String $ T.pack t
+
+taggedText tag t = tagged2 tag [text t]
+tagged2 tag xs = Array (V.fromList $ (text tag) : xs)
+
 
 
 -- Parse test files ----------------------------------------------------
@@ -45,11 +53,6 @@ compareParses a bytes markup = do
         Right m -> if (j == (jsonify m)) then Okay else  (Mismatch j (jsonify m))
         Left e  -> BadParse e
     Nothing -> BadJson bytes
-
-message (BadJson bs)   = "Bad JSON: " ++ (show bs)
-message (BadParse e)   = "Markup parse error: " ++ (show e)
-message (Mismatch e g) = "Whoops!\nExpected: " ++ (show e) ++ "\nGot: " ++ (show g)
-message Okay           = "okay"
 
 checkFile a = do
   bytes  <- B.readFile $ (take ((length a) - (length ".txt")) a) ++ ".json"

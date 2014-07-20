@@ -8,7 +8,7 @@ GHC_OPTS += -XFlexibleContexts
 
 all: $(binaries)
 
-check: test
+check: test test_files
 	./test
 	./test_files tests/*.txt
 

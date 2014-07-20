@@ -9,7 +9,9 @@ module Markup
             Blockquote,
             UnorderedList,
             OrderedList,
-            Item),
+            Item,
+            Linkdef,
+            Link),
      document) where
 
 import Control.Monad
@@ -28,12 +30,15 @@ data Markup = Document [Markup]
             | OrderedList [Markup]
             | UnorderedList [Markup]
             | Item [Markup]
+            | Linkdef String String
+            | Link String (Maybe String)
             deriving (Show, Eq)
 
 -- Main elements -------------------------------------------------------
 
 document :: Stream s m Char => ParsecT s (Int, Int, Int) m Markup
 document = do
+  optional modeline
   many (try eol)
   paragraphs <- many element
   eod
@@ -46,6 +51,7 @@ element = indentation >> (
                           unorderedList <|>
                           orderedList <|>
                           blockquote <|>
+                          linkdef <|>
                           paragraph
                          )
 
@@ -58,10 +64,12 @@ header = do
 section = do
   name       <- sectionMarker
   paragraphs <- many sectionBody
-  string "#."
+  sectionEnd
   blank
   return (Section name paragraphs)
   <?> "section"
+
+sectionEnd = string "##."
 
 verbatim      = indented 3 (liftM Verbatim verbatimText) <?> "verbatim"
 
@@ -72,6 +80,20 @@ paragraph     = liftM Paragraph paragraphText <?> "paragraph"
 unorderedList = list UnorderedList '-' <?> "unordered list"
 
 orderedList   = list OrderedList '#' <?> "ordered list"
+
+linkdef = do
+  char '['
+  name <- many (noneOf "]")
+  string "] <"
+  link <- many (noneOf ">")
+  char '>'
+  blank
+  return (Linkdef name link)
+
+modeline = do
+  try (string "-*-")
+  many ((notFollowedBy blank) >> anyChar)
+  blank
 
 -- And the nitty gritty details ----------------------------------------
 
@@ -98,9 +120,18 @@ verbatimLine = do
 verbatimBlankLine = try eol >> return "\n" <?> "verbatim blank"
 
 paragraphText = do
-  text <- many1 (textUntil tagOpen <|> taggedText)
+  text <- many1 (textUntil ((void tagOpen) <|> (void (char '['))) <|> taggedText <|> link)
   blank
   return text
+
+link = do
+  char '['
+  link <- many1 (noneOf "|]")
+  maybeKey <- optionMaybe linkKey
+  char ']'
+  return (Link link maybeKey)
+
+linkKey = char '|' >> many1 (noneOf "]")
 
 textUntil p = liftM Text $ many1 $ charsUntil p
 
@@ -110,7 +141,7 @@ plainChar = inSubdoc (noneOf "\\\n}") (noneOf "\\\n")
 
 newlineChar = notFollowedBy blank >> newline >> indentation >> return ' '
 
-escapedChar = char '\\' >> oneOf "\\{}*#-"
+escapedChar = char '\\' >> oneOf "\\{}*#-[]"
 
 taggedText = do
   name <- tagOpen
@@ -138,12 +169,12 @@ tagOpen = do
 taggedOrBrace = void tagOpen <|> void (char '}')
 
 sectionMarker = do
-  string "# "
+  string "## "
   n <- name
   many eol
   return n
 
-sectionBody = notFollowedBy (string "#.") >> element
+sectionBody = notFollowedBy sectionEnd >> element
 
 name = many1 letter
 
