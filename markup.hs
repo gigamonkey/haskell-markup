@@ -175,7 +175,7 @@ taggedOrBracket = void tagOpen <|> void (oneOf "|]")
 sectionMarker = do
   string "## "
   n <- name
-  many eol
+  many1 (try eol)
   return n
 
 sectionBody = notFollowedBy sectionEnd >> element
