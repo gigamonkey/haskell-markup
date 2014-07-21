@@ -125,6 +125,10 @@ shouldParse =
   , ("foo\n\n  % term %\n  defn\n\n", d [p [t "foo"], dl [ dt [t "term"], dd [p [t "defn"]]]])
   , ("foo\n\n  % term %\n  defn\n\n  bar\n\n", d [p [t "foo"], dl [ dt [t "term"], dd [p [t "defn"], p [t "bar"]]]])
   , ("foo\n\n  % term %\n  defn\n\n  bar\n\n  % term2 %\n  defn2\n\n  bar2\n\n", d [p [t "foo"], dl [ dt [t "term"], dd [p [t "defn"], p [t "bar"]], dt [t "term2"], dd [p [t "defn2"], p [t "bar2"]]]])
+  , ("foo \\ bar", d [p [t "foo \\ bar"]])
+  , ("foo \\\\ bar", d [p [t "foo \\ bar"]])
+  , ("foo # bar", d [p [t "foo # bar"]])
+  , ("foo \\# bar", d [p [t "foo # bar"]])
   ]
 
 threeLineVerbatim = d [ v "line one\n line two\n line three"]

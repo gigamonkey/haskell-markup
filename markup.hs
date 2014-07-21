@@ -164,11 +164,11 @@ modeline = do
   blank
 
 paragraphText = do
-  text <- many1 (textUntil (taggedOr (char '[') <|> blank) <|> taggedText <|> link)
+  text <- many1 (textUntil (taggedOr (char '[') <|> blank) <|> taggedText <|> linkref)
   blank
   return text
 
-link = do
+linkref = do
   char '['
   contents <- linkContents
   maybeKey <- optionMaybe linkKey
