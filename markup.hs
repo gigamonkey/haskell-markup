@@ -83,13 +83,17 @@ sectionEnd = string "##."
 
 verbatim      = indented 3 (liftM Verbatim verbatimText) <?> "verbatim"
 
-blockquote    = indented 2 (liftM Blockquote (many1 element)) <?> "blockquote"
+blockquote    = indented 2 (liftM Blockquote (many1 blockquoteElement)) <?> "blockquote"
 
 paragraph     = liftM Paragraph paragraphText <?> "paragraph"
 
 orderedList   = list OrderedList '#' <?> "ordered list"
 
 unorderedList = list UnorderedList '-' <?> "unordered list"
+
+blockquoteElement = do
+  try (notFollowedBy (count 3 (char ' ') >> noneOf " "))
+  element
 
 sectionDivider = do
   char '§'
