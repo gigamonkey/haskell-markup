@@ -242,7 +242,7 @@ blank =  do
 
 indented n p = do
   indent n
-  try (lookAhead (string (replicate n ' ')))
+  try (lookAhead (count n (char ' ')))
   r <- p
   dedent n
   return r
