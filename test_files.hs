@@ -51,7 +51,7 @@ tagged2 tag xs = Array (V.fromList $ text tag : xs)
 compareParses a bytes text =
   case decode bytes of
     Just j ->
-      case markup a text of
+      case markup ["note", "comment"] a text of
         Right m -> if j == jsonify m then Okay else Mismatch j (jsonify m) m
         Left e  -> BadParse e text
     Nothing -> BadJson bytes

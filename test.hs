@@ -150,7 +150,7 @@ emitResult t = putStr $ case check t of
                           (False, msg) -> "\nFAIL: " ++ homoiconic (fst t) ++ ":\n" ++ msg ++ "\n"
 
 check (input, expected) =
-  case markup "<unknown>" input of
+  case markup [ "note", "comment" ] "<unknown>" input of
     Left err -> (False, show err)
     Right d ->
       if d == expected then

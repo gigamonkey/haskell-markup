@@ -20,10 +20,11 @@ module Markup
 
 import Control.Monad
 import Text.Parsec hiding (newline)
+import Data.Set (fromList, member)
 
 -- Main API ------------------------------------------------------------
 
-markup filename text = runParser document (0, 0, 0) filename (concatMap detab text)
+markup subdocs filename text = runParser document (0, 0, 0, fromList subdocs) filename (concatMap detab text)
     where
       detab '\t' = replicate 8 ' '
       detab c    = [c]
@@ -185,8 +186,9 @@ newlineChar = notFollowedBy blank >> newline >> indentation >> return ' '
 plainChar = inSubdoc (noneOf "}") anyChar
 
 taggedText = do
+  (_, _, _, subdocs) <- getState
   name <- tagOpen
-  text <- if name == "note" || name == "comment" then subdocContents else simpleContents
+  text <- if name `member` subdocs then subdocContents else simpleContents
   char '}'
   return (Tagged name text)
 
@@ -199,11 +201,11 @@ tagOpen = do
   <?> "tagOpen"
 
 subdocContents = do
-  (a, b, subdocLevel) <- getState
-  setState (a, b, subdocLevel + 1)
+  (a, b, subdocLevel, sds) <- getState
+  setState (a, b, subdocLevel + 1, sds)
   paragraphs <- many1 element
   eod
-  setState (a, b, subdocLevel)
+  setState (a, b, subdocLevel, sds)
   return paragraphs
 
 simpleContents = many1 (textUntil (taggedOr $ char '}') <|> taggedText)
@@ -236,26 +238,26 @@ blank =  do
   <?> "blank"
 
 indentation = do
-  (current, soFar, subdocLevel) <- getState
+  (current, soFar, subdocLevel, sds) <- getState
   let i = current - soFar
   try $ count i (char ' ')
-  setState (current, current, subdocLevel)
+  setState (current, current, subdocLevel, sds)
 
 indent n = do
-  (orig, soFar, subdocLevel) <- getState
-  setState (orig + n, soFar, subdocLevel)
+  (orig, soFar, subdocLevel, sds) <- getState
+  setState (orig + n, soFar, subdocLevel, sds)
 
 dedent n = do
-  (orig, soFar, subdocLevel) <- getState
-  setState (orig - n, soFar, subdocLevel)
+  (orig, soFar, subdocLevel, sds) <- getState
+  setState (orig - n, soFar, subdocLevel, sds)
 
 extraIndentation n = do
-  (i, _, subdocLevel) <- getState
-  setState (i + n, i + n, subdocLevel)
+  (i, _, subdocLevel, sds) <- getState
+  setState (i + n, i + n, subdocLevel, sds)
 
 newline = do
-  (i, _, subdocLevel) <- getState
-  setState (i, 0, subdocLevel)
+  (i, _, subdocLevel, sds) <- getState
+  setState (i, 0, subdocLevel, sds)
   void (char '\n')
   <?> "newline"
 
@@ -273,5 +275,5 @@ indented n p = do
   return r
 
 inSubdoc p1 p2 = do
-  (_, _, subdocLevel) <- getState
+  (_, _, subdocLevel, _) <- getState
   if subdocLevel > 0 then p1 else p2

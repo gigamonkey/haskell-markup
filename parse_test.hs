@@ -8,7 +8,7 @@ data Result = Okay Markup | BadParse ParseError String
 -- Parse test files ----------------------------------------------------
 
 checkParse a input =
-  case markup a input of
+  case markup ["note", "comment"] a input of
     Right m -> Okay m
     Left e  -> BadParse e input
 
