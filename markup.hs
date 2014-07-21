@@ -59,18 +59,17 @@ document = do
   eod
   return (Document paragraphs)
 
-element = indentation >> (
-                          header <|>
-                          section <|>
-                          verbatim <|>
-                          orderedList <|>
-                          unorderedList <|>
-                          definitionList <|>
-                          blockquote <|>
-                          try linkdef <|>
-                          sectionDivider <|>
-                          paragraph
-                         )
+element = indentation >> anElement
+    where anElement = header         <|>
+                      section        <|>
+                      verbatim       <|>
+                      orderedList    <|>
+                      unorderedList  <|>
+                      definitionList <|>
+                      blockquote     <|>
+                      try linkdef    <|>
+                      sectionDivider <|>
+                      paragraph
 
 header = do
   level <- headerMarker
