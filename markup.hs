@@ -16,10 +16,13 @@ module Markup
             Definition,
             Linkdef,
             Link),
-     document) where
+     markup) where
 
 import Control.Monad
 import Text.Parsec hiding (newline)
+
+
+markup filename text = runParser document (0, 0, 0) filename (concat (map detab text))
 
 -- Document representation ---------------------------------------------
 
@@ -115,10 +118,9 @@ definitionP = do
   try (indentation >> notFollowedBy (string "% "))
   paragraph
 
-
 linkdef = do
   char '['
-  name <- many1 (charsUntil (char ']'))
+  name <- charsUntil (char ']')
   string "] <"
   link <- many (noneOf ">")
   char '>'
@@ -170,9 +172,9 @@ linkContents = many1 (textUntil taggedOrBracket <|> taggedText)
 
 linkKey = char '|' >> many1 (noneOf "]")
 
-textUntil p = liftM Text $ many1 $ charsUntil p
+textUntil p = liftM Text $ charsUntil p
 
-charsUntil p = notFollowedBy p >> (escapedChar <|> newlineChar <|> plainChar)
+charsUntil p = many1 $ notFollowedBy p >> (escapedChar <|> newlineChar <|> plainChar)
 
 plainChar = inSubdoc (noneOf "}") anyChar
 
@@ -284,3 +286,6 @@ inSubdoc p1 p2 = do
 getSubdocLevel = do
   (_, _, subdocLevel) <- getState
   return subdocLevel
+
+detab '\t' = replicate 8 ' '
+detab c    = [c]

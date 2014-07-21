@@ -1,5 +1,4 @@
 import Control.Monad
-import Text.Parsec
 import Markup
 
 -- Tests ---------------------------------------------------------------
@@ -151,10 +150,8 @@ emitResult t = do
              (True, _)    -> "."
              (False, msg) -> "\nFAIL: " ++ homoiconic (fst t) ++ ":\n" ++ msg ++ "\n"
 
-testParse = runParser document (0, 0, 0) "input string"
-
 check (input, expected) =
-  case testParse input of
+  case (markup "<unknown>" input) of
     Left err -> (False, show err)
     Right d ->
       if d == expected then

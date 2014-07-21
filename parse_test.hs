@@ -7,13 +7,10 @@ data Result = Okay Markup | BadParse ParseError String
 
 -- Parse test files ----------------------------------------------------
 
-testParse :: String -> String -> Either ParseError Markup
-testParse file = runParser document (0, 0, 0) file
-
-checkParse a markup = do
-  case (testParse a markup) of
+checkParse a input = do
+  case (markup a input) of
     Right m -> Okay m
-    Left e  -> BadParse e markup
+    Left e  -> BadParse e input
 
 checkFile a = do
   markup <- readFile a

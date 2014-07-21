@@ -48,15 +48,12 @@ tagged2 tag xs = Array (V.fromList $ (text tag) : xs)
 
 -- Parse test files ----------------------------------------------------
 
-testParse :: String -> String -> Either ParseError Markup
-testParse file = runParser document (0, 0, 0) file
-
-compareParses a bytes markup = do
+compareParses a bytes text = do
   case decode bytes of
     Just j -> do
-      case (testParse a markup) of
+      case (markup a text) of
         Right m -> if (j == (jsonify m)) then Okay else  (Mismatch j (jsonify m) m)
-        Left e  -> BadParse e markup
+        Left e  -> BadParse e text
     Nothing -> BadJson bytes
 
 checkFile reporter summary a = do
