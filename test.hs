@@ -141,17 +141,16 @@ homoiconic s =
           _    -> [c]
 
 main = do
-  forM_ shouldParse $ emitResult
+  forM_ shouldParse emitResult
   putStrLn ""
 
 
-emitResult t = do
-  putStr $ case check t of
-             (True, _)    -> "."
-             (False, msg) -> "\nFAIL: " ++ homoiconic (fst t) ++ ":\n" ++ msg ++ "\n"
+emitResult t = putStr $ case check t of
+                          (True, _)    -> "."
+                          (False, msg) -> "\nFAIL: " ++ homoiconic (fst t) ++ ":\n" ++ msg ++ "\n"
 
 check (input, expected) =
-  case (markup "<unknown>" input) of
+  case markup "<unknown>" input of
     Left err -> (False, show err)
     Right d ->
       if d == expected then

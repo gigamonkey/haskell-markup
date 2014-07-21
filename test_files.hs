@@ -29,74 +29,74 @@ jsonify (Item ms)                     = tagged "li" ms
 jsonify (Text s)                      = text s
 jsonify (Verbatim s)                  = taggedText "pre" s
 jsonify (Linkdef n l)                 = tagged2 "link_def" [taggedText "link" n, taggedText "url" l]
-jsonify (Link ((Text n):[]) Nothing)  = taggedText "link" n
+jsonify (Link (Text n : []) Nothing)  = taggedText "link" n
 jsonify (Link ms Nothing)             = tagged "link" ms
-jsonify (Link ((Text n):[]) (Just k)) = tagged2 "link" [text n, taggedText "key" k]
-jsonify (Link ms (Just k))            = tagged2 "link" ((map jsonify ms) ++ [(taggedText "key" k)])
+jsonify (Link (Text n : []) (Just k)) = tagged2 "link" [text n, taggedText "key" k]
+jsonify (Link ms (Just k))            = tagged2 "link" (map jsonify ms ++ [taggedText "key" k])
 jsonify (DefinitionList ms)           = tagged "dl" ms
 jsonify (Term ms)                     = tagged "dt" ms
 jsonify (Definition ms)               = tagged "dd" ms
 jsonify SectionDivider                = taggedText "section" "§"
 
-tagged tag ms = Array (V.fromList $ (text tag) : (map jsonify ms))
+tagged tag ms = Array (V.fromList $ text tag : map jsonify ms)
 text t        = String $ T.pack t
 
 taggedText tag t = tagged2 tag [text t]
-tagged2 tag xs = Array (V.fromList $ (text tag) : xs)
+tagged2 tag xs = Array (V.fromList $ text tag : xs)
 
 
 
 -- Parse test files ----------------------------------------------------
 
-compareParses a bytes text = do
+compareParses a bytes text =
   case decode bytes of
-    Just j -> do
-      case (markup a text) of
-        Right m -> if (j == (jsonify m)) then Okay else  (Mismatch j (jsonify m) m)
+    Just j ->
+      case markup a text of
+        Right m -> if j == jsonify m then Okay else Mismatch j (jsonify m) m
         Left e  -> BadParse e text
     Nothing -> BadJson bytes
 
 checkFile reporter summary a = do
-  bytes  <- B.readFile $ (take ((length a) - (length ".txt")) a) ++ ".json"
+  bytes  <- B.readFile $ take (length a - length ".txt") a ++ ".json"
   markup <- readFile a
-  let result = (compareParses a bytes markup)
+  let result = compareParses a bytes markup
   reporter a result
   return (summarize summary result)
 
-summarize (bj, bp, m, ok) (BadJson _)    = (bj + 1, bp, m, ok)
-summarize (bj, bp, m, ok) (BadParse _ _) = (bj, bp + 1, m, ok)
-summarize (bj, bp, m, ok) (Mismatch _ _ _) = (bj, bp, m + 1, ok)
+summarize (bj, bp, m, ok) (BadJson {})    = (bj + 1, bp, m, ok)
+summarize (bj, bp, m, ok) (BadParse {}) = (bj, bp + 1, m, ok)
+summarize (bj, bp, m, ok) (Mismatch {}) = (bj, bp, m + 1, ok)
 summarize (bj, bp, m, ok) Okay           = (bj, bp, m, ok + 1)
 
-report a (BadJson _)    = putStrLn $ "Whoops! (Bad json) .... " ++ a
-report a (BadParse _ _) = putStrLn $ "FAIL (Bad parse) ...... " ++ a
-report a (Mismatch _ _ _) = putStrLn $ "FAIL (Mismatch) ....... " ++ a
-report _ Okay           = return ()
+report a (BadJson {})  = putStrLn $ "Whoops! (Bad json) .... " ++ a
+report a (BadParse {}) = putStrLn $ "FAIL (Bad parse) ...... " ++ a
+report a (Mismatch {}) = putStrLn $ "FAIL (Mismatch) ....... " ++ a
+report _ Okay          = return ()
 
-verboseReport a (BadJson bs)     = putStrLn $ "Bad JSON in " ++ a ++ "\n\n" ++ (show bs)
-verboseReport a (BadParse e m)   = putStrLn $ "Parse error in " ++ a ++ "\n" ++ (show e) ++ "\n\n" ++ (show m)
+verboseReport a (BadJson bs)     = putStrLn $ "Bad JSON in " ++ a ++ "\n\n" ++ show bs
+verboseReport a (BadParse e m)   = putStrLn $ "Parse error in " ++ a ++ "\n" ++ show e ++ "\n\n" ++ show m
 verboseReport _ Okay             = putStr "."
 verboseReport a (Mismatch e g _) = do
     putStrLn $ "Mismatch in " ++ a ++ "\n\n"
     putStrLn "-- Expected ------"
-    putStrLn (show e)
+    print e
     putStrLn "------------------"
     putStrLn ""
     putStrLn "-- Got -----------"
-    putStrLn (show g)
+    print g
     putStrLn "------------------"
 
 
 showResults (bj, bp, m, ok) = do
-  putStrLn $ "\n"
-  putStrLn $ "Bad JSON   : " ++ (show bj)
-  putStrLn $ "Bad Parses : " ++ (show bp)
-  putStrLn $ "Mismatches : " ++ (show m)
-  putStrLn $ "Okay       : " ++ (show ok)
+  putStrLn "\n"
+  putStrLn $ "Bad JSON   : " ++ show bj
+  putStrLn $ "Bad Parses : " ++ show bp
+  putStrLn $ "Mismatches : " ++ show m
+  putStrLn $ "Okay       : " ++ show ok
 
-reporter args = if (length args) == 1 then verboseReport else report
+reporter args = if length args == 1 then verboseReport else report
 
 main = do
   args <- getArgs
   results <- foldM (checkFile (reporter args)) (0, 0, 0, 0) args
-  if (length args) == 1 then return () else showResults results
+  unless (length args == 1) $ showResults results

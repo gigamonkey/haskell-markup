@@ -23,7 +23,7 @@ import Text.Parsec hiding (newline)
 
 -- Main API ------------------------------------------------------------
 
-markup filename text = runParser document (0, 0, 0) filename (concat (map detab text))
+markup filename text = runParser document (0, 0, 0) filename (concatMap detab text)
     where
       detab '\t' = replicate 8 ' '
       detab c    = [c]
@@ -66,7 +66,7 @@ element = indentation >> (
                           unorderedList <|>
                           definitionList <|>
                           blockquote <|>
-                          (try linkdef) <|>
+                          try linkdef <|>
                           sectionDivider <|>
                           paragraph
                          )
@@ -115,18 +115,18 @@ verbatim = indented 3 (liftM Verbatim verbatimText) <?> "verbatim"
         return (text ++ "\n")
 
       dropTrailingBlanks lines =
-          reverse $ (dropLastNewline (dropWhile ("\n" ==) $ reverse lines))
+          reverse $ dropLastNewline (dropWhile ("\n" ==) $ reverse lines)
 
       dropLastNewline lines =
           case lines of
-            head:tail -> (reverse (dropWhile ('\n' ==) $ reverse head)) : tail
+            head:tail -> reverse (dropWhile ('\n' ==) $ reverse head) : tail
             [] -> lines
 
 orderedList = list OrderedList '#' <?> "ordered list"
 
 unorderedList = list UnorderedList '-' <?> "unordered list"
 
-definitionList = indented 2 (lookAhead term >> (liftM DefinitionList (many1 (term <|> definition)))) <?> "definition list"
+definitionList = indented 2 (lookAhead term >> liftM DefinitionList (many1 (term <|> definition))) <?> "definition list"
     where term = do
             try (indentation >> string "% ")
             term <- many1 (textUntil (taggedOr (string " %")) <|> taggedText)
@@ -160,7 +160,7 @@ paragraph = liftM Paragraph paragraphText <?> "paragraph"
 
 modeline = do
   try (string "-*-")
-  many ((notFollowedBy blank) >> anyChar)
+  many (notFollowedBy blank >> anyChar)
   blank
 
 paragraphText = do
@@ -186,7 +186,7 @@ plainChar = inSubdoc (noneOf "}") anyChar
 
 taggedText = do
   name <- tagOpen
-  text <- if (name == "note" || name == "comment") then do subdocContents else do simpleContents
+  text <- if name == "note" || name == "comment" then subdocContents else simpleContents
   char '}'
   return (Tagged name text)
 
@@ -208,7 +208,7 @@ subdocContents = do
 
 simpleContents = many1 (textUntil (taggedOr $ char '}') <|> taggedText)
 
-taggedOr p = (void tagOpen <|> void p)
+taggedOr p = void tagOpen <|> void p
 
 name = many1 letter
 
@@ -228,7 +228,7 @@ whitespace = many (oneOf " \t") <?> "whitespace"
 eol = whitespace >> newline <?> "end of line"
 
 eod = inSubdoc endOfSubdoc eof
-    where endOfSubdoc = (void (lookAhead (char '}')))
+    where endOfSubdoc = void (lookAhead (char '}'))
 
 blank =  do
   eol <|> eod
