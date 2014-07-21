@@ -21,8 +21,12 @@ module Markup
 import Control.Monad
 import Text.Parsec hiding (newline)
 
+-- Main API ------------------------------------------------------------
 
 markup filename text = runParser document (0, 0, 0) filename (concat (map detab text))
+    where
+      detab '\t' = replicate 8 ' '
+      detab c    = [c]
 
 -- Document representation ---------------------------------------------
 
@@ -47,7 +51,6 @@ data Markup = Document [Markup]
 
 -- Main elements -------------------------------------------------------
 
-document :: Stream s m Char => ParsecT s (Int, Int, Int) m Markup
 document = do
   optional modeline
   many (try eol)
@@ -73,6 +76,10 @@ header = do
   text  <- paragraphText
   return (Header level text)
   <?> "header"
+      where headerMarker = do
+              stars <- many1 (char '*')
+              whitespace
+              return (length stars)
 
 section = do
   name       <- sectionMarker
@@ -81,83 +88,83 @@ section = do
   blank
   return (Section name paragraphs)
   <?> "section"
+      where
+        sectionMarker = do
+            string "## "
+            n <- name
+            many1 (try eol)
+            return n
 
-sectionEnd = string "##."
+        sectionEnd = string "##."
 
-verbatim      = indented 3 (liftM Verbatim verbatimText) <?> "verbatim"
+        sectionBody = notFollowedBy sectionEnd >> element
 
-blockquote    = indented 2 (liftM Blockquote (many1 blockquoteElement)) <?> "blockquote"
+verbatim = indented 3 (liftM Verbatim verbatimText) <?> "verbatim"
+    where
+      verbatimText = do
+        lines <- many1 (verbatimBlankLine <|> verbatimLine)
+        return (concat $ dropTrailingBlanks lines)
 
-paragraph     = liftM Paragraph paragraphText <?> "paragraph"
+      verbatimBlankLine =
+          try eol >> return "\n" <?> "verbatim blank"
 
-orderedList   = list OrderedList '#' <?> "ordered list"
+      verbatimLine = do
+        indentation
+        text <- many1 (notFollowedBy eol >> anyChar)
+        eol <|> try eod
+        return (text ++ "\n")
+
+      dropTrailingBlanks lines =
+          reverse $ (dropLastNewline (dropWhile ("\n" ==) $ reverse lines))
+
+      dropLastNewline lines =
+          case lines of
+            head:tail -> (reverse (dropWhile ('\n' ==) $ reverse head)) : tail
+            [] -> lines
+
+orderedList = list OrderedList '#' <?> "ordered list"
 
 unorderedList = list UnorderedList '-' <?> "unordered list"
 
-blockquoteElement = do
-  try (notFollowedBy (count 3 (char ' ') >> noneOf " "))
-  element
-
-sectionDivider = do
-  char '§'
-  blank
-  return SectionDivider
-
 definitionList = indented 2 (lookAhead term >> (liftM DefinitionList (many1 (term <|> definition)))) <?> "definition list"
+    where term = do
+            try (indentation >> string "% ")
+            term <- many1 (textUntil (taggedOr (string " %")) <|> taggedText)
+            string " %"
+            eol
+            return (Term term)
+          definition = liftM Definition $ many1 definitionP
+          definitionP = do
+                   try (indentation >> notFollowedBy (string "% "))
+                   paragraph
 
-term = do
-  try (indentation >> string "% ")
-  term <- many1 (textUntil taggedOrPercent <|> taggedText)
-  string " %"
-  eol
-  return (Term term)
-
-definition = liftM Definition $ many1 definitionP
-
-definitionP = do
-  try (indentation >> notFollowedBy (string "% "))
-  paragraph
+blockquote = indented 2 (liftM Blockquote (many1 blockquoteElement)) <?> "blockquote"
+    where blockquoteElement = do
+            try (notFollowedBy (count 3 (char ' ') >> noneOf " "))
+            element
 
 linkdef = do
-  char '['
-  name <- charsUntil (char ']')
-  string "] <"
-  link <- many (noneOf ">")
-  char '>'
+  name <- linkdefName
+  char ' '
+  link <- linkdefLink
   blank
   return (Linkdef name link)
+      where linkdefName = between (char '[') (char ']') (charsUntil (char ']'))
+            linkdefLink = between (char '<') (char '>') (many (noneOf ">"))
+
+sectionDivider = whitespace >> char '§' >> blank >> return SectionDivider
+
+paragraph = liftM Paragraph paragraphText <?> "paragraph"
+
+-- And the nitty gritty details ----------------------------------------
 
 modeline = do
   try (string "-*-")
   many ((notFollowedBy blank) >> anyChar)
   blank
 
--- And the nitty gritty details ----------------------------------------
-
-headerMarker = do
-  stars <- many1 (char '*')
-  whitespace
-  return (length stars)
-
-verbatimText = do
-  lines <- many1 (verbatimBlankLine <|> verbatimLine)
-  return (concat $ dropTrailingBlanks lines)
-      where dropTrailingBlanks lines = reverse $ (dropLastNewline (dropWhile ("\n" ==) $ reverse lines))
-            dropLastNewline lines =
-                case lines of
-                  head:tail -> (reverse (dropWhile ('\n' ==) $ reverse head)) : tail
-                  [] -> lines
-
-verbatimLine = do
-  indentation
-  text <- many1 (notFollowedBy eol >> anyChar)
-  eol <|> try eod
-  return (text ++ "\n")
-
-verbatimBlankLine = try eol >> return "\n" <?> "verbatim blank"
-
 paragraphText = do
-  text <- many1 (textUntil (void tagOpen <|> void (char '[') <|> blank) <|> taggedText <|> link)
+  text <- many1 (textUntil (taggedOr (char '[') <|> blank) <|> taggedText <|> link)
   blank
   return text
 
@@ -167,36 +174,21 @@ link = do
   maybeKey <- optionMaybe linkKey
   char ']'
   return (Link contents maybeKey)
+    where
+      linkContents = many1 (textUntil (taggedOr (oneOf "|]")) <|> taggedText)
+      linkKey      = char '|' >> many1 (noneOf "]")
 
-linkContents = many1 (textUntil taggedOrBracket <|> taggedText)
-
-linkKey = char '|' >> many1 (noneOf "]")
-
-textUntil p = liftM Text $ charsUntil p
-
-charsUntil p = many1 $ notFollowedBy p >> (escapedChar <|> newlineChar <|> plainChar)
-
-plainChar = inSubdoc (noneOf "}") anyChar
+escapedChar = try (char '\\' >> oneOf "\\{}*#-[]%|<") <?> "escaped char"
 
 newlineChar = notFollowedBy blank >> newline >> indentation >> return ' '
 
-escapedChar = try (char '\\' >> oneOf "\\{}*#-[]%|<") <?> "escaped char"
+plainChar = inSubdoc (noneOf "}") anyChar
 
 taggedText = do
   name <- tagOpen
   text <- if (name == "note" || name == "comment") then do subdocContents else do simpleContents
   char '}'
   return (Tagged name text)
-
-simpleContents = many1 (textUntil taggedOrBrace <|> taggedText)
-
-subdocContents = do
-  (a, b, subdocLevel) <- getState
-  setState (a, b, subdocLevel + 1)
-  paragraphs <- many1 element
-  eod
-  setState (a, b, subdocLevel)
-  return paragraphs
 
 tagOpen = do
   notFollowedBy escapedChar
@@ -206,31 +198,28 @@ tagOpen = do
   return name
   <?> "tagOpen"
 
-taggedOrBrace = void tagOpen <|> void (char '}')
+subdocContents = do
+  (a, b, subdocLevel) <- getState
+  setState (a, b, subdocLevel + 1)
+  paragraphs <- many1 element
+  eod
+  setState (a, b, subdocLevel)
+  return paragraphs
 
-taggedOrBracket = void tagOpen <|> void (oneOf "|]")
+simpleContents = many1 (textUntil (taggedOr $ char '}') <|> taggedText)
 
-taggedOrPercent = void tagOpen <|> void (string " %")
-
-sectionMarker = do
-  string "## "
-  n <- name
-  many1 (try eol)
-  return n
-
-sectionBody = notFollowedBy sectionEnd >> element
+taggedOr p = (void tagOpen <|> void p)
 
 name = many1 letter
 
 list c m = liftM c $ indented 2 $ many1 (try (indentation >> listElement m))
-
-listElement m = do
-  try (char m >> char ' ')
-  extraIndentation 2
-  contents <- many1 (indentation >> (orderedList <|> unorderedList <|> paragraph))
-  dedent 2
-  return (Item contents)
-
+    where
+      listElement m = do
+        try (char m >> char ' ')
+        extraIndentation 2
+        contents <- many1 (indentation >> (orderedList <|> unorderedList <|> paragraph))
+        dedent 2
+        return (Item contents)
 
 -- Whitespace and indentation handling ---------------------------------
 
@@ -238,20 +227,13 @@ whitespace = many (oneOf " \t") <?> "whitespace"
 
 eol = whitespace >> newline <?> "end of line"
 
-eod = inSubdoc braceAsEod eof
+eod = inSubdoc endOfSubdoc eof
+    where endOfSubdoc = (void (lookAhead (char '}')))
 
 blank =  do
   eol <|> eod
   void (many1 (try eol)) <|> eod
-  return ()
   <?> "blank"
-
-indented n p = do
-  indent n
-  try (lookAhead (count n (char ' ')))
-  r <- p
-  dedent n
-  return r
 
 indentation = do
   (current, soFar, subdocLevel) <- getState
@@ -277,15 +259,19 @@ newline = do
   void (char '\n')
   <?> "newline"
 
-braceAsEod = void $ lookAhead $ char '}'
+-- Combinators ---------------------------------------------------------
+
+textUntil p = liftM Text $ charsUntil p
+
+charsUntil p = many1 $ notFollowedBy p >> (escapedChar <|> newlineChar <|> plainChar)
+
+indented n p = do
+  indent n
+  try (lookAhead (count n (char ' ')))
+  r <- p
+  dedent n
+  return r
 
 inSubdoc p1 p2 = do
-  subdocLevel <- getSubdocLevel
-  if subdocLevel > 0 then do p1 else do p2
-
-getSubdocLevel = do
   (_, _, subdocLevel) <- getState
-  return subdocLevel
-
-detab '\t' = replicate 8 ' '
-detab c    = [c]
+  if subdocLevel > 0 then p1 else p2

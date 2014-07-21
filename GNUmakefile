@@ -4,7 +4,6 @@ binaries = $(basename $(sources))
 GHC_OPTS := -O2
 GHC_OPTS += -W
 GHC_OPTS += -XNoMonomorphismRestriction
-GHC_OPTS += -XFlexibleContexts
 
 all: $(binaries)
 
