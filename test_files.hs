@@ -10,41 +10,53 @@ import qualified Data.Vector as V
 
 data Result = BadJson B.ByteString
             | BadParse ParseError String
-            | Mismatch Value Value Markup
+            | Mismatch Value Value Document
             | Okay
 
 
 -- Markup to Json ------------------------------------------------------
 
-jsonify :: Markup -> Value
-jsonify (Document ms)                 = tagged "body" ms
-jsonify (Header i ms)                 = tagged ("h" ++ show i) ms
-jsonify (Paragraph ms)                = tagged "p" ms
-jsonify (Section tag ms)              = tagged tag ms
-jsonify (Tagged tag ms)               = tagged tag ms
-jsonify (Blockquote ms)               = tagged "blockquote" ms
-jsonify (OrderedList ms)              = tagged "ol" ms
-jsonify (UnorderedList ms)            = tagged "ul" ms
-jsonify (Item ms)                     = tagged "li" ms
-jsonify (Text s)                      = text s
-jsonify (Verbatim s)                  = taggedText "pre" s
-jsonify (Linkdef n l)                 = tagged2 "link_def" [taggedText "link" n, taggedText "url" l]
-jsonify (Link (Text n : []) Nothing)  = taggedText "link" n
-jsonify (Link ms Nothing)             = tagged "link" ms
-jsonify (Link (Text n : []) (Just k)) = tagged2 "link" [text n, taggedText "key" k]
-jsonify (Link ms (Just k))            = tagged2 "link" (map jsonify ms ++ [taggedText "key" k])
-jsonify (DefinitionList ms)           = tagged "dl" ms
-jsonify (Term ms)                     = tagged "dt" ms
-jsonify (Definition ms)               = tagged "dd" ms
-jsonify SectionDivider                = taggedText "section" "§"
+-- data JSON = Tgd String [JSON]
+--           | Txt String
 
-tagged tag ms = Array (V.fromList $ text tag : map jsonify ms)
-text t        = String $ T.pack t
+class Jsonable a where
+    jsonify :: a -> Value
 
-taggedText tag t = tagged2 tag [text t]
-tagged2 tag xs = Array (V.fromList $ text tag : xs)
+instance Jsonable Document where
+    jsonify (Document body)               = tagged "body" body
 
+instance Jsonable Block where
+    jsonify (Header i text)               = tagged ("h" ++ show i) text
+    jsonify (Paragraph body)              = tagged "p" body
+    jsonify (Section tag body)            = tagged tag body
+    jsonify (Blockquote body)             = tagged "blockquote" body
+    jsonify (OrderedList body)            = tagged "ol" body
+    jsonify (UnorderedList body)          = tagged "ul" body
+    jsonify (DefinitionList body)         = tagged "dl" body
+    jsonify (Verbatim s)                  = taggedText "pre" s
+    jsonify SectionDivider                = taggedText "section" "§"
+    jsonify (Linkdef n l)                 = taggedArray "link_def" [taggedText "link" n, taggedText "url" l]
 
+instance Jsonable Inline where
+    jsonify (Tagged tag ms)               = tagged tag ms
+    jsonify (Text s)                      = jsonString s
+    jsonify (Link (Text n : []) Nothing)  = taggedText "link" n
+    jsonify (Link ms Nothing)             = tagged "link" ms
+    jsonify (Link (Text n : []) (Just k)) = taggedArray "link" [jsonString n, taggedText "key" k]
+    jsonify (Link ms (Just k))            = taggedArray "link" (map jsonify ms ++ [taggedText "key" k])
+    jsonify (Subdoc tag body)             = tagged tag body
+
+instance Jsonable Item where
+    jsonify (Item ms)                     = tagged "li" ms
+
+instance Jsonable DefinitionItem where
+    jsonify (Term ms)                     = tagged "dt" ms
+    jsonify (Definition ms)               = tagged "dd" ms
+
+tagged tag body      = taggedArray tag (map jsonify body)
+taggedText tag text  = taggedArray tag [jsonString text]
+taggedArray tag body = Array (V.fromList $ jsonString tag : body)
+jsonString t         = String $ T.pack t
 
 -- Parse test files ----------------------------------------------------
 

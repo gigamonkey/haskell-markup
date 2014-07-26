@@ -3,7 +3,7 @@ import Markup
 import System.Environment
 import Text.Parsec
 
-data Result = Okay Markup | BadParse ParseError String
+data Result = Okay Document | BadParse ParseError String
 
 -- Parse test files ----------------------------------------------------
 

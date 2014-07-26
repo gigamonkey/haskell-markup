@@ -1,22 +1,10 @@
 module Markup
-    (Markup(Document,
-            Header,
-            Paragraph,
-            Section,
-            SectionDivider,
-            Tagged,
-            Text,
-            Verbatim,
-            Blockquote,
-            OrderedList,
-            UnorderedList,
-            DefinitionList,
-            Item,
-            Term,
-            Definition,
-            Linkdef,
-            Link),
-     markup) where
+    ( Document(..)
+    , Block(..)
+    , Inline(..)
+    , Item(..)
+    , DefinitionItem(..)
+    , markup) where
 
 import Control.Monad
 import Text.Parsec hiding (newline)
@@ -31,24 +19,32 @@ markup subdocs filename text = runParser document (0, 0, 0, fromList subdocs) fi
 
 -- Document representation ---------------------------------------------
 
-data Markup = Document [Markup]
-            | Header Int [Markup]
-            | Paragraph [Markup]
-            | Section String [Markup]
-            | SectionDivider
-            | Tagged String [Markup]
+data Document = Document [Block] deriving (Show, Eq)
+
+data Block = Header Int [Inline]
+           | Paragraph [Inline]
+           | Section String [Block]
+           | SectionDivider
+           | Verbatim String
+           | Blockquote [Block]
+           | OrderedList [Item]
+           | UnorderedList [Item]
+           | DefinitionList [DefinitionItem]
+           | Linkdef String String
+             deriving (Show, Eq)
+
+data Inline = Tagged String [Inline]
+            | Subdoc String [Block]
             | Text String
-            | Verbatim String
-            | Blockquote [Markup]
-            | OrderedList [Markup]
-            | UnorderedList [Markup]
-            | DefinitionList [Markup]
-            | Term [Markup]
-            | Definition [Markup]
-            | Item [Markup]
-            | Linkdef String String
-            | Link [Markup] (Maybe String)
+            | Link [Inline] (Maybe String)
             deriving (Show, Eq)
+
+data Item = Item [Block] deriving (Show, Eq)
+
+data DefinitionItem = Term [Inline]
+                    | Definition [Block]
+                      deriving (Show, Eq)
+
 
 -- Main elements -------------------------------------------------------
 
@@ -187,9 +183,9 @@ plainChar = inSubdoc (noneOf "}") anyChar
 taggedText = do
   (_, _, _, subdocs) <- getState
   name <- tagOpen
-  text <- if name `member` subdocs then subdocContents else simpleContents
+  element <- if name `member` subdocs then subdocContents name else simpleContents name
   char '}'
-  return (Tagged name text)
+  return element
 
 tagOpen = do
   notFollowedBy escapedChar
@@ -199,15 +195,17 @@ tagOpen = do
   return name
   <?> "tagOpen"
 
-subdocContents = do
+subdocContents name = do
   (a, b, subdocLevel, sds) <- getState
   setState (a, b, subdocLevel + 1, sds)
   paragraphs <- many1 element
   eod
   setState (a, b, subdocLevel, sds)
-  return paragraphs
+  return (Subdoc name paragraphs)
 
-simpleContents = many1 (textUntil (taggedOr $ char '}') <|> taggedText)
+simpleContents name = do
+  text <- many1 (textUntil (taggedOr $ char '}') <|> taggedText)
+  return (Tagged name text)
 
 taggedOr p = void tagOpen <|> void p
 

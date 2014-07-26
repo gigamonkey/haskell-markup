@@ -18,7 +18,7 @@ li = Item
 dl = DefinitionList
 dt = Term
 dd = Definition
-n  = Tagged "note"
+n  = Subdoc "note"
 
 emptyDoc    = d []
 fooDoc      = d [ p [ t "foo"]]
