@@ -18,7 +18,7 @@ terminated with carriage return (U+000D), carriage-return/line-feed
 equivalent to eight spaces. A blank line (which has a syntactic
 meaning to be described later) is defined as two consecutive
 end-of-line sequences possibly with white space between
-them.\note{Trailing white space has no meaning in Markup and do not
+them.\note{Trailing white space has no meaning in Markup and does not
 need to be preserved by a Markup processor.} The basic syntax is
 similar to Markdown and reStructuredText with a bit of TeX thrown in
 for good measure.
@@ -121,7 +121,7 @@ Could be rendered in HTML as:
    <ol>
      <li>
        <p>This is the first item of a list consisting of one
-          paragraph that spans a couple lines.</p>
+	  paragraph that spans a couple lines.</p>
      </li>
 
      <li>
