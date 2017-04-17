@@ -75,10 +75,10 @@ checkFile reporter summary a = do
   reporter a result
   return (summarize summary result)
 
-summarize (bj, bp, m, ok) (BadJson {})    = (bj + 1, bp, m, ok)
+summarize (bj, bp, m, ok) (BadJson {})  = (bj + 1, bp, m, ok)
 summarize (bj, bp, m, ok) (BadParse {}) = (bj, bp + 1, m, ok)
 summarize (bj, bp, m, ok) (Mismatch {}) = (bj, bp, m + 1, ok)
-summarize (bj, bp, m, ok) Okay           = (bj, bp, m, ok + 1)
+summarize (bj, bp, m, ok) Okay          = (bj, bp, m, ok + 1)
 
 report a (BadJson {})  = putStrLn $ "Whoops! (Bad json) .... " ++ a
 report a (BadParse {}) = putStrLn $ "FAIL (Bad parse) ...... " ++ a
